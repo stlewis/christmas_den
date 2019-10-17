@@ -5,13 +5,22 @@
     <title>ES6 Boilerplate</title>
     <meta name="description" content="ES6 Boilerplate">
     <script src='./build/bundle.js'></script>
-<script src="//unpkg.com/aframe-spe-particles-component/dist/aframe-spe-particles-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.0.1/dist/aframe-extras.min.js"></script>
+    <script src="//unpkg.com/aframe-spe-particles-component/dist/aframe-spe-particles-component.min.js"></script>
   </head>
   <body>
-    <a-scene renderer= "physicallyCorrectLights: true;" light='defaultLightsEnabled: false;'>
+    <a-scene renderer= "physicallyCorrectLights: true; colorManagement: true;" light='defaultLightsEnabled: false;'>
 
-      <a-camera wasd-controls position='0 1.6 0.5'>
-      </a-camera>
+      <a-entity id="rig"
+          movement-controls="speed: 0.1; constrainToNavMesh: true;"
+          position="0 0 0">
+            <a-entity camera
+              position="0 1.6 0"
+              look-controls="pointerLockEnabled: true"></a-entity>
+      </a-entity>
+
+
+
       <a-assets>
         <img id='carpet-texture' src='./textures/RedCarpet_S.jpg'>
         <img id='carpet-normal' src='./textures/RedCarpet_N.jpg'>
@@ -21,13 +30,18 @@
         <a-asset-item id='fireplace' src='./models/fireplace/fireplace.gltf'></a-asset-item>
         <a-asset-item id='chair' src='./models/chair/chair.gltf'></a-asset-item>
         <a-asset-item id='tree' src='./models/christmas_tree/christmas-tree.gltf'></a-asset-item>
+        <a-asset-item id='wreath' src='./models/holly_wreath.glb'></a-asset-item>
         <a-asset-item id='logs-model' src='./models/logs/logs.gltf'></a-asset-item>
+        <a-asset-item id='stocking' src='./models/stocking.glb'></a-asset-item>
+        <a-asset-item id='door' src='./models/door/door.gltf'></a-asset-item>
 
         <a-mixin id='wall-mat' material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'></a-mixin>
+        <a-mixin id='tree-light'
+                 geometry='primitive: icosahedron; radius: 0.008; height: 0.008'></a-mixin>
       </a-assets>
 
 
-      <a-entity light='type: ambient; color: orange; intensity: .3;'></a-entity>
+      <a-entity light='type: ambient; color: #B2FFFF; intensity: .05;'></a-entity>
       <a-entity id='fire'
                 flicker
                 scale='0.25 0.25 0.25'
@@ -38,6 +52,7 @@
       <a-sound src='./sounds/fire.wav' autoplay='true' loop='true' position='0.144 0.196 -2.393'></a-sound>
 
 
+      <a-entity visible='false' nav-mesh geometry='primitive: plane; height: 4.9; width: 4.9;' rotation='-90 0 0'></a-entity>
       <a-entity
         id='floor'
         geometry='primitive: plane; height: 5; width: 5'
@@ -48,7 +63,7 @@
 
       <a-entity
         id='ceiling'
-        position='0 4 0'
+        position='0 3.2 0'
         geometry='primitive: plane; height: 5; width: 5'
         rotation='90 0 0'
         shadow='receive: true;'
@@ -57,16 +72,16 @@
 
       <a-entity
         id='back-wall'
-        class='clickable'
         shadow='receive: true;'
         csg-meshs='subtract: #fireplace-box'
-        geometry='primitive: box; height: 4; width: 5; depth: 0.01;'
-        position='0 2 -2.5'
+        geometry='primitive: box; height: 3.2; width: 5; depth: 0.01;'
+        position='0 1.6 -2.5'
         rotation='0 0 0'
         shadow="receive: true; cast: true;"
         material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'
         mixin='#wall-mat'
         ></a-entity>
+        <a-entity id='the-wreath' scale='0.07 0.07 0.07' gltf-model='#wreath' position='0 2 -2.41'></a-entity>
 
     <a-entity id='fireplace-box'
       geometry='primitive: box; height: 0.9; width: 0.7; depth: 0.5;'
@@ -75,8 +90,8 @@
 
       <a-entity
         id='right-wall'
-        geometry='primitive: plane; height: 4; width: 5'
-        position='2.5 2 0'
+        geometry='primitive: plane; height: 3.2; width: 5'
+        position='2.5 1.6 0'
         rotation='0 -90 0'
         shadow="receive: true; cast: true;"
         material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'
@@ -85,8 +100,8 @@
 
       <a-entity
         id='left-wall'
-        geometry='primitive: plane; height: 4; width: 5'
-        position='-2.5 2 0'
+        geometry='primitive: plane; height: 3.2; width: 5'
+        position='-2.5 1.6 0'
         rotation='0 90 0'
         shadow="receive: true; cast: true;"
         material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'
@@ -95,23 +110,27 @@
 
       <a-entity
         id='front-wall'
-        geometry='primitive: plane; height: 4; width: 5'
-        position='0 2 2.5'
+        geometry='primitive: plane; height: 3.2; width: 5'
+        position='0 1.6 2.5'
         rotation='0 180 0'
         material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'
         shadow="receive: true; cast: true;"
         mixin='#wall-mat'
         ></a-entity>
+        <a-entity id='the-door' shadow='receive: true; cast: false;' gltf-model='#door' position='-1.8 0 2.5' rotation='-90 180 0' scale='-0.013 0.013 0.013'></a-entity>
 
-        <a-entity shadow='receive: true; cast: true;' id='the-fireplace' rotation='0 0 0' position='-0.5 0 -2.35' scale='0.01 0.01 0.01' gltf-model='#fireplace'>
-        </a-entity>
+        <a-entity shadow='receive: true; cast: true;' id='the-fireplace' rotation='0 0 0' position='-0.5 0 -2.35' scale='0.01 0.01 0.01' gltf-model='#fireplace'></a-entity>
+        <a-entity id='the-stocking1' position='-0.5 1.404 -2.149' gltf-model='#stocking' scale='1 1.7 1'></a-entity>
+        <a-entity id='the-stocking2' position='-0.2 1.404 -2.149' gltf-model='#stocking' scale='1 1.7 1'></a-entity>
+        <a-entity id='the-stocking3' position='0.1 1.404 -2.149' gltf-model='#stocking' scale='1 1.7 1'></a-entity>
+        <a-entity id='the-stocking4' position='0.4 1.404 -2.149' gltf-model='#stocking' scale='1 1.7 1'></a-entity>
+        <a-entity id='the-stocking5' position='0.7 1.404 -2.149' gltf-model='#stocking' scale='1 1.7 1'></a-entity>
         <a-entity shadow='receive: true; cast: true;' id='chair-left' gltf-model='#chair' scale='0.01 0.01 0.01' position='-0.5 0 -0.5' rotation='-90 0 -130'></a-entity>
         <a-entity shadow='receive: true; cast: true;' id='chair-right' gltf-model='#chair' scale='0.01 0.01 0.01' position='0.5 0 -0.5' rotation='-90 0 -70'></a-entity>
 
-        <a-entity shadow='receive: true; cast: true;' id='christmas-tree' gltf-model='#tree' scale='0.02 0.02 0.02' position='2 0 1.5' rotation='-90 0 0'></a-entity>
-
-
-
+        <a-entity tree-lit position='2 0 1.5'>
+          <a-entity shadow='receive: true; cast: true;' id='christmas-tree' gltf-model='#tree' scale='0.02 0.02 0.017' rotation='-90 0 0'></a-entity>
+        </a-entity>
 
 
     </a-scene>
