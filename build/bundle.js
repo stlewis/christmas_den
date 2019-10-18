@@ -86061,11 +86061,11 @@ AFRAME.registerComponent('flicker', {
 
 AFRAME.registerComponent('tree-lights', {
   init: function init() {
-    var colors = ['green', 'red', 'blue', 'white', 'purple', 'yellow', 'orange'];
+    var colors = ['#008000', '#ff0000', '#0000ff', '#ffffff', '#800080', '#ffff00', '#ff5733'];
     var delays = [1000, 3000, 5000, 7000, 9000, 11000, 13000];
     var el = this.el;
 
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < 30; i++) {
       var idx = this._randomInt(0, colors.length - 1);
 
       var thisColor = colors[idx];
@@ -86082,9 +86082,12 @@ AFRAME.registerComponent('tree-lights', {
       newLight.setAttribute('animation__blink_' + idx, {
         property: 'material.color',
         from: thisColor,
+        type: 'color',
         to: '#000000',
         loop: true,
+        round: true,
         easing: 'linear',
+        dir: 'alternate',
         delay: delays[idx]
       });
       this.el.appendChild(newLight);
