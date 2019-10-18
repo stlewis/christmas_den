@@ -1,0 +1,20 @@
+<a-entity id='the-door' shadow='receive: true; cast: false;' gltf-model='#door' position='-1.8 0 2.5' rotation='-90 180 0' scale='-0.013 0.013 0.013'></a-entity>
+<a-entity shadow='receive: true; cast: true;' id='the-fireplace' rotation='0 0 0' position='-0.5 0 -2.35' scale='0.01 0.01 0.01' gltf-model='#fireplace'></a-entity>
+<a-entity id='the-stocking1' position='-0.5 1.404 -2.149' gltf-model='#stocking' scale='1 1.7 1'></a-entity>
+<a-entity id='the-stocking2' position='-0.2 1.404 -2.149' gltf-model='#stocking' scale='1 1.7 1'></a-entity>
+<a-entity id='the-stocking3' position='0.1 1.404 -2.149' gltf-model='#stocking' scale='1 1.7 1'></a-entity>
+<a-entity id='the-stocking4' position='0.4 1.404 -2.149' gltf-model='#stocking' scale='1 1.7 1'></a-entity>
+<a-entity id='the-stocking5' position='0.7 1.404 -2.149' gltf-model='#stocking' scale='1 1.7 1'></a-entity>
+<a-entity shadow='receive: true; cast: true;' id='chair-left' gltf-model='#chair' scale='0.01 0.01 0.01' position='-0.5 0 -0.5' rotation='-90 0 -130'></a-entity>
+<a-entity shadow='receive: true; cast: true;' id='chair-right' gltf-model='#chair' scale='0.01 0.01 0.01' position='0.5 0 -0.5' rotation='-90 0 -70'></a-entity>
+
+<a-entity id='fire'
+          flicker
+          scale='0.25 0.25 0.25'
+          spe-particles__fire="texture: https://raw.githubusercontent.com/harlyq/aframe-spe-particles-component/master/assets/explosion_sheet.png; texture-frames: 5 5; velocity: .1 .1 0; acceleration: 0 2 0; acceleration-spread: 0 2 0; velocity-spread: .4 0 .4; particle-count: 20; max-age: 1; size: 1,2; size-spread: 2; opacity: 1,0; wiggle: 0 1 0; blending: additive"
+      position="0.144 0.196 -2.393"
+      light="type: point; color: orange; intensity: 1; castShadow: true;"></a-entity>
+<a-entity id='logs' gltf-model='#logs-model' scale='0.0009 0.0009 0.0009' position='0.151 0.099 -2.693' ></a-entity>
+<a-sound src='./sounds/fire.wav' autoplay='true' loop='true' position='0.144 0.196 -2.393'></a-sound>
+
+        <a-entity position='1.170 0 1.380' shadow='receive: true; cast: true;' id='christmas-tree' gltf-model='#tree' scale='0.02 0.02 0.017' rotation='-90 0 0'></a-entity>

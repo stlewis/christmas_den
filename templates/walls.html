@@ -1,0 +1,73 @@
+
+      <a-entity visible='false' nav-mesh geometry='primitive: plane; height: 4.9; width: 4.9;' rotation='-90 0 0'></a-entity>
+      <a-entity
+        id='floor'
+        geometry='primitive: plane; height: 5; width: 5'
+        rotation='-90 0 0'
+        shadow='receive: true;'
+        material='src: #carpet-texture; normalMap: #carpet-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1;'
+        ></a-entity>
+
+      <a-entity
+        id='ceiling'
+        position='0 3.2 0'
+        geometry='primitive: plane; height: 5; width: 5'
+        rotation='90 0 0'
+        shadow='receive: true;'
+        material='color: #fff;'
+        ></a-entity>
+
+      <a-entity
+        id='back-wall'
+        shadow='receive: true;'
+        csg-meshs='subtract: #fireplace-box'
+        geometry='primitive: box; height: 3.2; width: 5; depth: 0.01;'
+        position='0 1.6 -2.5'
+        rotation='0 0 0'
+        shadow="receive: true; cast: true;"
+        material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'
+        mixin='#wall-mat'
+        ></a-entity>
+        <a-entity id='the-wreath' scale='0.07 0.07 0.07' gltf-model='#wreath' position='0 2 -2.41'></a-entity>
+
+    <a-entity id='fireplace-box'
+      geometry='primitive: box; height: 0.9; width: 0.7; depth: 0.5;'
+      material='color: orange; opacity: 0.0; transparent: true;'
+              position='0.121 0.485l -2.5'></a-entity>
+
+      <a-entity
+        id='right-wall'
+        csg-meshs='subtract: #window-box'
+        geometry='primitive: box; height: 3.2; width: 5; depth: 0.1524;'
+        position='2.5 1.6 0'
+        rotation='0 -90 0'
+        shadow="receive: true; cast: true;"
+        material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'
+        mixin='#wall-mat'
+        ></a-entity>
+
+    <a-entity id='window-box'
+      geometry='primitive: box; height: 0.9; width: 1.4; depth: 0.5;'
+      material='color: orange; opacity: 0.0; transparent: true;'
+              position='2.841 1.6 -1.532'></a-entity>
+
+      <a-entity
+        id='left-wall'
+        geometry='primitive: plane; height: 3.2; width: 5'
+        position='-2.5 1.6 0'
+        rotation='0 90 0'
+        shadow="receive: true; cast: true;"
+        material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'
+        mixin='#wall-mat'
+        ></a-entity>
+
+      <a-entity
+        id='front-wall'
+        geometry='primitive: plane; height: 3.2; width: 5'
+        position='0 1.6 2.5'
+        rotation='0 180 0'
+        material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'
+        shadow="receive: true; cast: true;"
+        mixin='#wall-mat'
+        ></a-entity>
+
