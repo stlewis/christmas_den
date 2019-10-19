@@ -17,6 +17,7 @@
         <img id='wall-texture' src='./textures/TexturesCom_Plaster_StuccoCombed_512_albedo.jpg'>
         <img id='wall-normal' src='./textures/TexturesCom_Plaster_StuccoCombed_512_normal.jpg'>
         <img id="sky" src="night_sky.jpg">
+        <audio id='sample-song' src='./sounds/example.mp3'>
 
         <a-asset-item id='fireplace' src='./models/fireplace/fireplace.gltf'></a-asset-item>
         <a-asset-item id='chair' src='./models/chair/chair.gltf'></a-asset-item>
@@ -24,6 +25,7 @@
         <a-asset-item id='wreath' src='./models/holly_wreath.glb'></a-asset-item>
         <a-asset-item id='logs-model' src='./models/logs/logs.gltf'></a-asset-item>
         <a-asset-item id='stocking' src='./models/stocking.glb'></a-asset-item>
+        <a-asset-item id='radio' src='./models/radio.glb'></a-asset-item>
         <a-asset-item id='door' src='./models/door/door.gltf'></a-asset-item>
 
         <a-mixin id='wall-mat' material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'></a-mixin>
@@ -41,7 +43,7 @@
 
       <a-entity template='src: ./templates/models.html'></a-entity>
       <a-entity template='src: ./templates/walls.html'></a-entity>
-      <a-entity template='src: ./templates/tree-lights.html'></a-entity>
+      <a-entity position='-0.018 0.0 0.041' template='src: ./templates/tree-lights.html'></a-entity>
 
       <a-entity light='type: ambient; color: #B2FFFF; intensity: .05;'></a-entity>
     </a-scene>

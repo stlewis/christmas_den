@@ -15,7 +15,9 @@ require('./src/flicker.js');
 
 require('./src/tree-lights.js');
 
-},{"./src/flicker.js":64,"./src/tree-lights.js":65,"aframe":7,"aframe-csg-meshs":2,"aframe-layout-component":3,"aframe-particle-system-component":4,"aframe-template-component":6}],2:[function(require,module,exports){
+require('./src/radio.js');
+
+},{"./src/flicker.js":64,"./src/radio.js":65,"./src/tree-lights.js":66,"aframe":7,"aframe-csg-meshs":2,"aframe-layout-component":3,"aframe-particle-system-component":4,"aframe-template-component":6}],2:[function(require,module,exports){
 const THREE = AFRAME.THREE;
 
 AFRAME.registerComponent('csg-meshs', {
@@ -89899,6 +89901,27 @@ AFRAME.registerComponent('flicker', {
 });
 
 },{}],65:[function(require,module,exports){
+"use strict";
+
+AFRAME.registerComponent('radio', {
+  init: function init() {
+    this.el.addEventListener('sound-ended', this.nextSong.bind(this));
+  },
+  nextSong: function nextSong(e) {
+    var songIds = ['sample', 'silent_night', 'joy_world', 'carol_bell', 'christmas_tree', 'merry_christmas'];
+    var currentSongId = e.detail.id;
+    var currentIdx = songIds.indexOf(currentSongId);
+    var nextIdx = currentIdx + 1;
+    if (nextIdx > songIds.length - 1) nextIdx = 0;
+    var nextSongId = songIds[nextIdx];
+    var soundId = 'sound__' + nextSongId;
+    var nextSong = document.querySelector('[' + soundId + ']');
+    console.log(nextSong.components);
+    nextSong.components[soundId].playSound();
+  }
+});
+
+},{}],66:[function(require,module,exports){
 "use strict";
 
 AFRAME.registerComponent('tree-lights', {
