@@ -86061,17 +86061,18 @@ AFRAME.registerComponent('flicker', {
 
 AFRAME.registerComponent('tree-lights', {
   init: function init() {
-    var colors = ['#008000', '#ff0000', '#0000ff', '#ffffff', '#800080', '#ffff00', '#ff5733'];
-    var delays = [1000, 3000, 5000, 7000, 9000, 11000, 13000];
+    var colors = ['#008000', '#ff0000', '#0000ff', '#ffffff', '#800080', '#ffff00', '#ff5733']; //let colors    = ['#008000', '#ff0000', '#0000ff']
+
+    var durations = [1000, 1200, 1300, 1400, 1500, 1600, 1700];
     var el = this.el;
 
-    for (var i = 0; i < 30; i++) {
+    for (var i = 0; i < 50; i++) {
       var idx = this._randomInt(0, colors.length - 1);
 
       var thisColor = colors[idx];
       var newLight = document.createElement('a-entity');
       newLight.setAttribute('geometry', {
-        primitive: 'icosahedron',
+        primitive: 'circle',
         radius: 0.008,
         height: 0.008
       });
@@ -86079,16 +86080,20 @@ AFRAME.registerComponent('tree-lights', {
         shader: 'flat',
         color: thisColor
       });
-      newLight.setAttribute('animation__blink_' + idx, {
-        property: 'material.color',
+      newLight.setAttribute('rotation', {
+        x: -90
+      });
+      newLight.setAttribute('animation', {
+        property: 'components.material.material.color',
         from: thisColor,
         type: 'color',
         to: '#000000',
         loop: true,
         round: true,
-        easing: 'linear',
+        isRawProperty: true,
         dir: 'alternate',
-        delay: delays[idx]
+        dur: 5000,
+        delay: durations[idx]
       });
       this.el.appendChild(newLight);
     }
