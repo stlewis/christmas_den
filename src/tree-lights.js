@@ -24,7 +24,7 @@ AFRAME.registerComponent('tree-lights', {
           round: true,
           isRawProperty: true,
           dir: 'alternate',
-          dur: 5000,
+          dur: 3000,
           delay: durations[idx]
         })
 

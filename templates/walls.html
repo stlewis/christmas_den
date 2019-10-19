@@ -1,5 +1,5 @@
 
-      <a-entity visible='false' nav-mesh geometry='primitive: plane; height: 4.9; width: 4.9;' rotation='-90 0 0'></a-entity>
+      <a-entity visible='false' nav-mesh geometry='primitive: plane; height: 4.8; width: 4.8;' rotation='-90 0 0'></a-entity>
       <a-entity
         id='floor'
         geometry='primitive: plane; height: 5; width: 5'
@@ -46,10 +46,18 @@
         mixin='#wall-mat'
         ></a-entity>
 
+      <a-entity
+        id='window-glass'
+        geometry="primitive: plane; width: 1.5; height: 1.2"
+        position="2.569 1.676 -1.145"
+        rotation="0 -90 0"
+        shadow="cast: false; receive: false;"
+        material="color: #FFFFFFF; opacity: 0.3; metalness: 1; roughness: 0; transparent: true;"></a-entity>
+
     <a-entity id='window-box'
-      geometry='primitive: box; height: 0.9; width: 1.4; depth: 0.5;'
+      geometry='primitive: box; height: 1; width: 0.5; depth: 1.5;'
       material='color: orange; opacity: 0.0; transparent: true;'
-              position='2.841 1.6 -1.532'></a-entity>
+              position='2.517 1.654 -1.149'></a-entity>
 
       <a-entity
         id='left-wall'

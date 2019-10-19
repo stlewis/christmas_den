@@ -16,6 +16,7 @@
         <img id='carpet-normal' src='./textures/RedCarpet_N.jpg'>
         <img id='wall-texture' src='./textures/TexturesCom_Plaster_StuccoCombed_512_albedo.jpg'>
         <img id='wall-normal' src='./textures/TexturesCom_Plaster_StuccoCombed_512_normal.jpg'>
+        <img id="sky" src="night_sky.jpg">
 
         <a-asset-item id='fireplace' src='./models/fireplace/fireplace.gltf'></a-asset-item>
         <a-asset-item id='chair' src='./models/chair/chair.gltf'></a-asset-item>
@@ -27,6 +28,8 @@
 
         <a-mixin id='wall-mat' material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'></a-mixin>
       </a-assets>
+      <a-sky src='#sky' rotation='0 90 0'></a-sky>
+      <a-entity position="0 2.25 -15" particle-system="preset: snow"></a-entity>
 
       <a-entity id="rig"
           movement-controls="speed: 0.1; constrainToNavMesh: true;"
