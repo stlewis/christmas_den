@@ -7,6 +7,30 @@
     <script src='./build/bundle.js'></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.0.1/dist/aframe-extras.min.js"></script>
     <script src="//unpkg.com/aframe-spe-particles-component/dist/aframe-spe-particles-component.min.js"></script>
+
+    <style type="text/css">
+        @font-face{
+          font-family:"Ionicons";
+          src:url("/fonts/ionicons.eot?v=2.0.1");
+          src:url("/fonts/ionicons.eot?v=2.0.1#iefix") format("embedded-opentype"),url("/fonts/ionicons.ttf?v=2.0.1") format("truetype"),url("/fonts/ionicons.woff?v=2.0.1") format("woff"),url("/fonts/ionicons.svg?v=2.0.1#Ionicons") format("svg");
+          font-weight:normal;
+          font-style:normal
+        }
+        body{font-family:Ionicons;}
+        .visuallyhidden {
+          position: absolute;
+          display: block;
+          border: 0;
+          clip: rect(0 0 0 0);
+          height: 1px;
+          width: 1px;
+          margin: -1px;
+          padding: 0;
+          overflow: hidden;
+        }
+      </style>
+
+
   </head>
   <body>
     <a-scene renderer="physicallyCorrectLights: true; colorManagement: true;" light='defaultLightsEnabled: false;'>
@@ -31,18 +55,28 @@
         <a-mixin id='wall-mat' material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'></a-mixin>
       </a-assets>
       <a-sky src='#sky' rotation='0 90 0'></a-sky>
-      <a-entity position="0 2.25 -15" particle-system="preset: snow"></a-entity>
+      <a-entity id='the-snow' position="4.86 2.25 -3.230" particle-system="preset: snow"></a-entity>
 
-      <a-entity id="rig"
-          movement-controls="speed: 0.1; constrainToNavMesh: true;"
+      <a-entity id="rig" movement-controls="speed: 0.1; constrainToNavMesh: true;"
           position="0 0 0">
             <a-entity camera
               position="0 1.6 0"
-              look-controls="pointerLockEnabled: true"></a-entity>
+              look-controls="pointerLockEnabled: true">
+
+              <a-entity
+                cursor
+						  raycaster="objects: [gui-interactable]"
+              geometry='primitive: circle; radius: 0.002;'
+              material='color: red; shader: flat;'
+              position='0 0 -0.25'
+              fuse="false"></a-entity>
+
+            </a-entity>
       </a-entity>
 
       <a-entity template='src: ./templates/models.html'></a-entity>
       <a-entity template='src: ./templates/walls.html'></a-entity>
+      <a-entity template='src: ./templates/radio-controls.html'></a-entity>
       <a-entity position='-0.018 0.0 0.041' template='src: ./templates/tree-lights.html'></a-entity>
 
       <a-entity light='type: ambient; color: #B2FFFF; intensity: .05;'></a-entity>

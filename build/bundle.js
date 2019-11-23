@@ -11,13 +11,17 @@ require('aframe-layout-component');
 
 require('aframe-particle-system-component');
 
+require('aframe-gui');
+
 require('./src/flicker.js');
 
 require('./src/tree-lights.js');
 
 require('./src/radio.js');
 
-},{"./src/flicker.js":64,"./src/radio.js":65,"./src/tree-lights.js":66,"aframe":7,"aframe-csg-meshs":2,"aframe-layout-component":3,"aframe-particle-system-component":4,"aframe-template-component":6}],2:[function(require,module,exports){
+require('./src/radio-controls.js');
+
+},{"./src/flicker.js":83,"./src/radio-controls.js":84,"./src/radio.js":85,"./src/tree-lights.js":86,"aframe":26,"aframe-csg-meshs":2,"aframe-gui":19,"aframe-layout-component":22,"aframe-particle-system-component":23,"aframe-template-component":25}],2:[function(require,module,exports){
 const THREE = AFRAME.THREE;
 
 AFRAME.registerComponent('csg-meshs', {
@@ -641,6 +645,2649 @@ ThreeBSP.Node.prototype.clipTo = function (node) {
 };
 
 },{}],3:[function(require,module,exports){
+AFRAME.registerComponent('gui-button', {
+    schema: {
+        on: {default: 'click'},
+        toggle: {type: 'boolean', default: false},
+        toggleState: {type: 'boolean', default: false},
+        text: {type: 'string', default: 'text'},
+        fontSize: {type: 'string', default: '150px'},
+        fontFamily: {type: 'string', default: 'Arial'},
+        fontWeight: {type: 'string', default: 'normal'},
+        fontColor: {type: 'string', default: key_offwhite},
+        borderColor: {type: 'string', default: key_offwhite},
+        backgroundColor: {type: 'string', default: key_grey},
+        hoverColor: {type: 'string', default: key_grey_dark},
+        activeColor: {type: 'string', default: key_orange},
+
+    },
+    init: function() {
+
+        var data = this.data;
+        var el = this.el;
+        var guiItem = el.getAttribute("gui-item");
+        this.guiItem = guiItem;
+        //console.log("in button, guiItem: "+JSON.stringify(guiItem));
+        var guiInteractable = el.getAttribute("gui-interactable");
+        this.guiInteractable = guiInteractable;
+        //console.log("in button, guiInteractable: "+JSON.stringify(guiInteractable));
+        var multiplier = 512; // POT conversion
+        var canvasWidth = guiItem.width*multiplier;
+        var canvasHeight = guiItem.height*multiplier;
+
+        var canvasContainer = document.createElement('div');
+        canvasContainer.setAttribute('class', 'visuallyhidden');
+        document.body.appendChild(canvasContainer);
+        console.log("in gui-button init, data: "+JSON.stringify(data));
+        var canvas = document.createElement("canvas");
+        this.canvas = canvas;
+        canvas.setAttribute('width', canvasWidth);
+        canvas.setAttribute('height', canvasHeight);
+        canvas.id = getUniqueId('canvas');
+        canvasContainer.appendChild(canvas);
+        var ctx = this.ctx = canvas.getContext('2d');
+
+        el.setAttribute('geometry', `primitive: plane; height: ${guiItem.height}; width: ${guiItem.width};`);
+        el.setAttribute('material', `shader: flat; transparent: true; opacity: 0.5; side:double; color:${data.backgroundColor};`);
+
+        var buttonContainer = document.createElement("a-entity");
+        buttonContainer.setAttribute('geometry', `primitive: box; width: ${guiItem.width}; height: ${guiItem.height}; depth: 0.02;`);
+        buttonContainer.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor}`);
+        buttonContainer.setAttribute('rotation', '0 0 0');
+        buttonContainer.setAttribute('position', '0 0 0.01');
+        el.appendChild(buttonContainer);
+
+        var buttonEntity = document.createElement("a-entity");
+        buttonEntity.setAttribute('geometry', `primitive: box; width: ${(guiItem.width-0.025)}; height: ${(guiItem.height-0.025)}; depth: 0.04;`);
+        buttonEntity.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.toggleState ? data.activeColor : data.backgroundColor}`);
+        buttonEntity.setAttribute('rotation', '0 0 0');
+        buttonEntity.setAttribute('position', '0 0 0.02');
+        el.appendChild(buttonEntity);
+        this.buttonEntity = buttonEntity;
+
+        this.setText(data.text);
+
+        el.addEventListener('mouseenter', function(event) {
+            buttonEntity.removeAttribute('animation__leave');
+            if (!(data.toggle)) {
+                buttonEntity.setAttribute('animation__enter', `property: material.color; from: ${data.backgroundColor}; to:${data.hoverColor}; dur:200;`);
+            }
+        });
+        el.addEventListener('mouseleave', function(event) {
+            if (!(data.toggle)) {
+                buttonEntity.removeAttribute('animation__click');
+                buttonEntity.setAttribute('animation__leave', `property: material.color; from: ${data.hoverColor}; to:${data.backgroundColor}; dur:200; easing: easeOutQuad;`);
+            }
+            buttonEntity.removeAttribute('animation__enter');
+        });
+        el.addEventListener(data.on, function(event) {
+            if (!(data.toggle)) { // if not toggling flashing active state
+                buttonEntity.setAttribute('animation__click', `property: material.color; from: ${data.activeColor}; to:${data.backgroundColor}; dur:400; easing: easeOutQuad;`);
+            }else{
+                var guiButton = el.components['gui-button']
+                // console.log("about to toggle, current state: " + guiButton.data.toggleState);
+                guiButton.setActiveState(!guiButton.data.toggleState);
+               //  buttonEntity.setAttribute('material', 'color', data.activeColor);
+            }
+
+            var clickActionFunctionName = guiInteractable.clickAction;
+            // console.log("in button, clickActionFunctionName: "+clickActionFunctionName);
+            // find object
+            var clickActionFunction = window[clickActionFunctionName];
+            //console.log("clickActionFunction: "+clickActionFunction);
+            // is object a function?
+            if (typeof clickActionFunction === "function") clickActionFunction(event);
+        });
+
+        ////WAI ARIA Support
+        el.setAttribute('role', 'button');
+
+
+    },
+    play: function () {
+
+    },
+    update: function (oldData) {
+        // console.log("In button update, toggle: "+this.data.toggleState);
+    },
+    setActiveState: function (activeState) {
+        // console.log("in setActiveState function, new state: " + activeState);
+        this.data.toggleState = activeState;
+        if (!activeState) {
+            console.log('not active, about to set background color');
+            this.buttonEntity.setAttribute('material', 'color', this.data.backgroundColor);
+        } else {
+            console.log('active, about to set active color');
+            this.buttonEntity.setAttribute('material', 'color', this.data.activeColor);
+        }
+    },
+    setText: function (newText) {
+        drawText(this.ctx, this.canvas, newText, this.data.fontSize, this.data.fontFamily, this.data.fontColor, 1,'center','middle',this.data.fontWeight);
+        if (this.textEntity) {
+            this.el.removeChild(this.textEntity);
+        }
+        var textEntity = document.createElement("a-entity");
+        this.textEntity = textEntity;
+        textEntity.setAttribute('geometry', `primitive: plane; width: ${this.guiItem.width/1.05}; height: ${this.guiItem.height/1.05};`);
+        textEntity.setAttribute('material', `shader: flat; src: #${this.canvas.id}; transparent: true; opacity: 1; side:front;`);
+        textEntity.setAttribute('position', '0 0 0.041');
+        this.el.appendChild(textEntity);
+    },
+});
+
+
+AFRAME.registerPrimitive( 'a-gui-button', {
+    defaultComponents: {
+        'gui-interactable': { },
+        'gui-item': { type: 'button' },
+        'gui-button': { }
+    },
+    mappings: {
+        'onclick': 'gui-interactable.clickAction',
+        'onhover': 'gui-interactable.hoverAction',
+        'key-code': 'gui-interactable.keyCode',
+        'width': 'gui-item.width',
+        'height': 'gui-item.height',
+        'margin': 'gui-item.margin',
+        'on': 'gui-button.on',
+        'value': 'gui-button.text',
+        'font-color': 'gui-button.fontColor',
+        'font-size': 'gui-button.fontSize',
+        'font-weight': 'gui-button.fontWeight',
+        'font-family': 'gui-button.fontFamily',
+        'border-color': 'gui-button.borderColor',
+        'background-color': 'gui-button.backgroundColor',
+        'hover-color': 'gui-button.hoverColor',
+        'active-color': 'gui-button.activeColor',
+        'toggle': 'gui-button.toggle',
+        'toggle-state': 'gui-button.toggleState'
+    }
+});
+
+},{}],4:[function(require,module,exports){
+AFRAME.registerComponent('gui-circle-loader', {
+    schema: {
+        count: {type: 'number', default: '100'},
+        fontFamily: {type: 'string', default: 'Arial'},
+        fontSize: {type: 'string', default: '150px'},
+        fontColor: {type: 'string', default: key_grey},
+        backgroundColor: {type: 'string', default: key_offwhite},
+        activeColor: {type: 'string', default: key_orange},
+    },
+    init: function() {
+
+        var data = this.data;
+        var el = this.el;
+        var guiItem = el.getAttribute("gui-item");
+        var multiplier = 512; // POT conversion
+        var canvasWidth = guiItem.height*multiplier; //square
+        var canvasHeight = guiItem.height*multiplier;
+
+        var canvasContainer = document.createElement('div');
+        canvasContainer.setAttribute('class', 'visuallyhidden');
+        document.body.appendChild(canvasContainer);
+
+        var canvas = document.createElement("canvas");
+        this.canvas = canvas;
+        canvas.className = "visuallyhidden";
+        canvas.setAttribute('width', canvasWidth);
+        canvas.setAttribute('height', canvasHeight);
+        canvas.className = 'visuallyhidden';
+        canvas.id = getUniqueId('canvas');
+        canvasContainer.appendChild(canvas);
+
+        var ctx = this.ctx = canvas.getContext('2d');
+
+        el.setAttribute('geometry', `primitive: plane; height: ${guiItem.height}; width: ${guiItem.height};`);
+        el.setAttribute('material', `shader: flat; transparent: true; opacity: 1; side:back; color:${data.backgroundColor};`);
+
+        drawText(ctx, canvas, data.count+'%', data.fontSize, data.fontFamily, data.fontColor, 1,'center','middle');
+
+        var loaderContainer = document.createElement("a-entity");
+        loaderContainer.setAttribute('geometry', `primitive: cylinder; radius: ${guiItem.height/2}; height: 0.02;`);
+        loaderContainer.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.backgroundColor}`);
+        loaderContainer.setAttribute('rotation', '90 0 0');
+        loaderContainer.setAttribute('position', '0 0 0.01');
+        el.appendChild(loaderContainer);
+
+        var countLoaded = document.createElement("a-entity");
+        countLoaded.setAttribute('geometry', `primitive: plane; width: ${guiItem.height/1.5}; height: ${guiItem.height/1.5};`);
+        countLoaded.setAttribute('material', `shader: flat; src: #${canvas.id}; transparent: true; opacity: 1; side:front;`);
+        countLoaded.setAttribute('position', '0 0 0.022');
+        countLoaded.id = "loader_ring_count";
+        el.appendChild(countLoaded);
+
+        var loaderRing = document.createElement("a-ring");
+        loaderRing.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.activeColor}`);
+        loaderRing.setAttribute('radius-inner', `${guiItem.height/3}`);
+        loaderRing.setAttribute('radius-outer', `${guiItem.height/2}`);
+        loaderRing.setAttribute('theta-start', '90');
+        loaderRing.setAttribute('theta-length', '10'); // this has to count 0 to 360 when loading
+        loaderRing.setAttribute('rotation', '0 0 0');
+        loaderRing.setAttribute('position', '0 0 0.04');
+        loaderRing.id = "loader_ring";
+        el.appendChild(loaderRing);
+
+    },
+    play: function () {
+
+    },
+    update: function (oldData) {
+    },
+});
+
+AFRAME.registerPrimitive( 'a-gui-circle-loader', {
+    defaultComponents: {
+        'gui-item': { type: 'circle-loader' },
+        'gui-circle-loader': { }
+    },
+    mappings: {
+        'width': 'gui-item.width',
+        'height': 'gui-item.height',
+        'margin': 'gui-item.margin',
+        'count': 'gui-circle-loader.count',
+        'font-size': 'gui-circle-loader.fontSize',
+        'font-family': 'gui-circle-loader.fontFamily',
+        'font-color': 'gui-circle-loader.fontColor',
+        'background-color': 'gui-circle-loader.backgroundColor',
+        'active-color': 'gui-circle-loader.activeColor'
+    }
+});
+
+},{}],5:[function(require,module,exports){
+AFRAME.registerComponent('gui-circle-timer', {
+    schema: {
+        countDown: {type: 'number', default: '10'},
+        fontFamily: {type: 'string', default: 'Arial'},
+        fontSize: {type: 'string', default: '150px'},
+        fontColor: {type: 'string', default: key_grey},
+        borderColor: {type: 'string', default: key_grey},
+        backgroundColor: {type: 'string', default: key_offwhite},
+        activeColor: {type: 'string', default: key_orange},
+    },
+    init: function() {
+
+        var data = this.data;
+        var el = this.el;
+        var guiItem = el.getAttribute("gui-item");
+        var guiInteractable = el.getAttribute("gui-interactable");
+        console.log("in timer callback, guiInteractable: "+JSON.stringify(guiInteractable));
+        var multiplier = 512; // POT conversion
+        var canvasWidth = guiItem.height*multiplier; //square
+        var canvasHeight = guiItem.height*multiplier;
+
+        var initCount = this.initCount = data.countDown;
+
+        var canvasContainer = document.createElement('div');
+        canvasContainer.setAttribute('class', 'visuallyhidden');
+        document.body.appendChild(canvasContainer);
+
+        var canvas = document.createElement("canvas");
+        this.canvas = canvas;
+        canvas.className = "visuallyhidden";
+        canvas.setAttribute('width', canvasWidth);
+        canvas.setAttribute('height', canvasHeight);
+        canvas.className = 'visuallyhidden';
+        canvas.id = getUniqueId('canvas');
+        canvasContainer.appendChild(canvas);
+
+        var ctx = this.ctx = canvas.getContext('2d');
+
+        el.setAttribute('geometry', `primitive: plane; height: ${guiItem.height}; width: ${guiItem.height};`);
+        el.setAttribute('material', `shader: flat; transparent: true; opacity: 1; side:back; color:${data.backgroundColor};`);
+
+        drawText(ctx, canvas, data.countDown, data.fontSize, data.fontFamily, data.fontColor, 1,'center','middle');
+
+        var timerContainer = document.createElement("a-entity");
+        timerContainer.setAttribute('geometry', `primitive: cylinder; radius: ${guiItem.height/2}; height: 0.02;`);
+        timerContainer.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.backgroundColor}`);
+        timerContainer.setAttribute('rotation', '90 0 0');
+        timerContainer.setAttribute('position', '0 0 0.01');
+        el.appendChild(timerContainer);
+
+        var countDownLabel = document.createElement("a-entity");
+        countDownLabel.setAttribute('geometry', `primitive: plane; width: ${guiItem.height/1.5}; height: ${guiItem.height/1.5};`);
+        countDownLabel.setAttribute('material', `shader: flat; src: #${canvas.id}; transparent: true; opacity: 1; side:front;`);
+        countDownLabel.setAttribute('position', '0 0 0.022');
+        el.appendChild(countDownLabel);
+        this.countDownLabel = countDownLabel;
+
+        var timerIndicator1 = document.createElement("a-ring");
+        timerIndicator1.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor}`);
+        timerIndicator1.setAttribute('radius-inner', `${guiItem.height/3}`);
+        timerIndicator1.setAttribute('radius-outer', `${guiItem.height/2}`);
+        timerIndicator1.setAttribute('theta-start', '-1');
+        timerIndicator1.setAttribute('theta-length', '3');
+        timerIndicator1.setAttribute('position', '0 0 0.04');
+        el.appendChild(timerIndicator1);
+        var timerIndicator2 = document.createElement("a-ring");
+        timerIndicator2.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor}`);
+        timerIndicator2.setAttribute('radius-inner', `${guiItem.height/3}`);
+        timerIndicator2.setAttribute('radius-outer', `${guiItem.height/2}`);
+        timerIndicator2.setAttribute('theta-start', '89');
+        timerIndicator2.setAttribute('theta-length', '3');
+        timerIndicator2.setAttribute('position', '0 0 0.04');
+        el.appendChild(timerIndicator2);
+        var timerIndicator3 = document.createElement("a-ring");
+        timerIndicator3.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor}`);
+        timerIndicator3.setAttribute('radius-inner', `${guiItem.height/3}`);
+        timerIndicator3.setAttribute('radius-outer', `${guiItem.height/2}`);
+        timerIndicator3.setAttribute('theta-start', '179');
+        timerIndicator3.setAttribute('theta-length', '3');
+        timerIndicator3.setAttribute('position', '0 0 0.04');
+        el.appendChild(timerIndicator3);
+        var timerIndicator4 = document.createElement("a-ring");
+        timerIndicator4.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor}`);
+        timerIndicator4.setAttribute('radius-inner', `${guiItem.height/3}`);
+        timerIndicator4.setAttribute('radius-outer', `${guiItem.height/2}`);
+        timerIndicator4.setAttribute('theta-start', '269');
+        timerIndicator4.setAttribute('theta-length', '3');
+        timerIndicator4.setAttribute('position', '0 0 0.04');
+        el.appendChild(timerIndicator4);
+
+        var timerRing = document.createElement("a-ring");
+        timerRing.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.activeColor}`);
+        timerRing.setAttribute('radius-inner', `${guiItem.height/3}`);
+        timerRing.setAttribute('radius-outer', `${guiItem.height/2}`);
+        timerRing.setAttribute('theta-start', '0');
+        timerRing.setAttribute('theta-length', '0'); // this has to increase 0 to 360 when running the countdown
+        timerRing.setAttribute('rotation', '0 180 90');
+        timerRing.setAttribute('position', '0 0 0.03');
+        el.appendChild(timerRing);
+        this.timerRing = timerRing;
+    },
+    update: function (oldData) {
+        var data = this.data;
+        var el = this.el;
+        if (Object.keys(oldData).length === 0) { return; }
+        if (data.countDown !== oldData.countDown) {
+            el.getObject3D('mesh').material.color = data.color;
+            var left = data.countDown,
+                count_down = this.initCount;
+            var elapsed = (Math.round(((count_down - left) * 100 ) / count_down) / 100) * 360;
+            this.timerRing.setAttribute('theta-length', elapsed); // this has to increase 0 to 360 when running the count_down
+            //text doesn't update
+            drawText(this.ctx, this.canvas, left, data.fontSize, data.fontFamily, data.fontColor, 1,'center','middle');
+            if (this.countDownLabel) {
+                el.removeChild(this.countDownLabel);
+            }
+            var guiItem = el.getAttribute("gui-item");
+            var canvas = this.canvas;
+            var countDownLabel = document.createElement("a-entity");
+            countDownLabel.setAttribute('geometry', `primitive: plane; width: ${guiItem.height/1.5}; height: ${guiItem.height/1.5};`);
+            countDownLabel.setAttribute('material', `shader: flat; src: #${canvas.id}; transparent: true; opacity: 1; side:front;`);
+            countDownLabel.setAttribute('position', '0 0 0.022');
+            el.appendChild(countDownLabel);
+            this.countDownLabel = countDownLabel;
+
+            if(left == 1){
+                console.log('fire callback on the last second');
+            }
+        }
+    },
+    callback: function () {
+        var guiInteractable = this.el.getAttribute("gui-interactable");
+        var clickActionFunctionName = guiInteractable.clickAction;
+        console.log("in timer callback, guiInteractable: "+JSON.stringify(guiInteractable));
+        console.log("in button, clickActionFunctionName: "+clickActionFunctionName);
+        // find object
+        var clickActionFunction = window[clickActionFunctionName];
+        //console.log("clickActionFunction: "+clickActionFunction);
+        // is object a function?
+        if (typeof clickActionFunction === "function") clickActionFunction();
+    }
+});
+
+AFRAME.registerPrimitive( 'a-gui-circle-timer', {
+    defaultComponents: {
+        'gui-item': { type: 'circle-timer' },
+        'gui-circle-timer': { }
+    },
+    mappings: {
+        'width': 'gui-item.width',
+        'height': 'gui-item.height',
+        'margin': 'gui-item.margin',
+        'count-down': 'gui-circle-timer.countDown',
+        'font-size': 'gui-circle-timer.fontSize',
+        'font-family': 'gui-circle-timer.fontFamily',
+        'font-color': 'gui-circle-timer.fontColor',
+        'border-color': 'gui-circle-timer.borderColor',
+        'background-color': 'gui-circle-timer.backgroundColor',
+        'active-color': 'gui-circle-timer.activeColor',
+        'callback': 'gui-interactable.clickAction',
+    }
+});
+
+},{}],6:[function(require,module,exports){
+AFRAME.registerComponent('gui-cursor', {
+    schema: {
+        color: {type: 'string', default: key_white},
+        hoverColor: {type: 'string', default: key_white},
+        activeColor: {type: 'string', default: key_orange},
+        distance: {type: 'number', default: -1},
+        design: {type: 'string', default: 'dot'},
+    },
+    init: function () {
+        var cursor = this.cursor = this.el.getAttribute('cursor');
+        var fuse = this.fuse = cursor.fuse; // true if cursor fuse is enabled.
+        var fuseTimeout = cursor.fuseTimeout; // animation lenght should be based on this value
+
+        var el = this.el;
+        var data = this.data;
+        var defaultHoverAnimationDuration = 200;
+        var fuseAnimationDuration = fuseTimeout - defaultHoverAnimationDuration;
+
+        AFRAME.utils.entity.setComponentProperty(el, 'raycaster.interval', '500');
+        
+        console.log("fuse: "+fuse+", fuseTimeout: "+fuseTimeout);
+
+        if(data.design == 'dot'){    
+
+            el.setAttribute('geometry', 'primitive: ring; radiusInner:0.000001; radiusOuter:0.025');
+            el.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            el.setAttribute('position', `0 0 ${data.distance}`);
+            el.setAttribute('animation__radiusInnerIn', `property: geometry.radiusInner; from: 0.000001; to:0.0225; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            el.setAttribute('animation__radiusOuterIn', `property: geometry.radiusOuter; from: 0.025; to:0.0275; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            el.setAttribute('animation__colorIn', `property: material.color; from: ${data.color}; to:${data.hoverColor}; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            el.setAttribute('animation__radiusInnerOut', `property: geometry.radiusInner; from: 0.0225; to:0.000001; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.setAttribute('animation__radiusOuterOut', `property: geometry.radiusOuter; from: 0.0275; to:0.025; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.setAttribute('animation__colorOut', `property: material.color; from: ${data.hoverColor}; to:${data.color}; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.setAttribute('animation__scale', `property: scale; from: 1 1 1; to:1.25 1.25 1.25; dur:200; easing:easeInQuad; startEvents: click`);
+
+            var cursorShadow = document.createElement("a-entity");
+            cursorShadow.setAttribute('geometry', 'primitive: ring; radiusInner:0.0275; radiusOuter:0.03; thetaLength:360');
+            cursorShadow.setAttribute('material', 'color: #000000; shader: flat; opacity:0.25;');
+            cursorShadow.setAttribute('position', '0 0 0');
+            cursorShadow.setAttribute('animation__radiusInnerIn', `property: geometry.radiusInner; from: 0.0275; to:0.03; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            cursorShadow.setAttribute('animation__radiusOuterIn', `property: geometry.radiusOuter; from: 0.03; to:0.0325; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            cursorShadow.setAttribute('animation__radiusInnerOut', `property: geometry.radiusInner; from: 0.03; to:0.0275; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            cursorShadow.setAttribute('animation__radiusOuterOut', `property: geometry.radiusOuter; from: 0.0325; to:0.03; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.appendChild(cursorShadow);
+            this.cursorShadow = cursorShadow;
+
+            if(fuse){
+                var fuseLoader = document.createElement("a-entity");
+                fuseLoader.setAttribute('geometry', 'primitive: ring; radiusInner:0.03; radiusOuter:0.0375; thetaLength:0');
+                fuseLoader.setAttribute('material', `color: ${data.activeColor}; shader: flat; opacity:1;`);
+                fuseLoader.setAttribute('position', `0 0 0`);
+                fuseLoader.setAttribute('animation', `property: geometry.thetaLength; from: 0; to:360; dur:${fuseAnimationDuration}; delay: ${defaultHoverAnimationDuration}; easing:linear; autoplay:false;`);
+                el.appendChild(fuseLoader);
+                this.fuseLoader = fuseLoader;
+            }
+            //end dot design
+
+        }else if(data.design == 'ring'){    
+            el.setAttribute('geometry', 'primitive: ring; radiusInner:0.0225; radiusOuter:0.0275');
+            el.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            el.setAttribute('position', `0 0 ${data.distance}`);
+            el.setAttribute('animation__radiusInnerIn', `property: geometry.radiusInner; from: 0.0225; to:0.025; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            el.setAttribute('animation__radiusOuterIn', `property: geometry.radiusOuter; from: 0.0275; to:0.0325; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            el.setAttribute('animation__colorIn', `property: material.color; from: ${data.color}; to:${data.hoverColor}; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            el.setAttribute('animation__radiusInnerOut', `property: geometry.radiusInner; from: 0.025; to:0.0225; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.setAttribute('animation__radiusOuterOut', `property: geometry.radiusOuter; from: 0.0325; to:0.0275; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.setAttribute('animation__colorOut', `property: material.color; from: ${data.hoverColor}; to:${data.color}; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.setAttribute('animation__scale', `property: scale; from: 1 1 1; to:1.25 1.25 1.25; dur:200; easing:easeInQuad; startEvents: click`);
+
+            var cursorShadow = document.createElement("a-entity");
+            cursorShadow.setAttribute('geometry', 'primitive: ring; radiusInner:0.03; radiusOuter:0.0325; thetaLength:360');
+            cursorShadow.setAttribute('material', 'color: #000000; shader: flat; opacity:0.25;');
+            cursorShadow.setAttribute('position', '0 0 0');
+            cursorShadow.setAttribute('animation__radiusInnerIn', `property: geometry.radiusInner; from: 0.03; to:0.0325; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            cursorShadow.setAttribute('animation__radiusOuterIn', `property: geometry.radiusOuter; from: 0.0325; to:0.0375; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            cursorShadow.setAttribute('animation__radiusInnerOut', `property: geometry.radiusInner; from: 0.0325; to:0.03; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            cursorShadow.setAttribute('animation__radiusOuterOut', `property: geometry.radiusOuter; from: 0.0375; to:0.0325; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.appendChild(cursorShadow);
+            this.cursorShadow = cursorShadow;
+
+            if(fuse){
+                var fuseLoader = document.createElement("a-entity");
+                fuseLoader.setAttribute('geometry', 'primitive: ring; radiusInner:0.035; radiusOuter:0.0425; thetaLength:0');
+                fuseLoader.setAttribute('material', `color: ${data.activeColor}; shader: flat; opacity:1;`);
+                fuseLoader.setAttribute('position', `0 0 0`);
+                fuseLoader.setAttribute('animation', `property: geometry.thetaLength; from: 0; to:360; dur:${fuseAnimationDuration}; delay: ${defaultHoverAnimationDuration}; easing:linear; autoplay:false;`);
+                el.appendChild(fuseLoader);
+                this.fuseLoader = fuseLoader;
+            }
+            //end ring design
+
+        }else if(data.design == 'reticle'){    
+            el.setAttribute('geometry', 'primitive: ring; radiusInner:0.000001; radiusOuter:0.0125; thetaLength:180;');
+            el.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            el.setAttribute('position', `0 0 ${data.distance}`);
+            el.setAttribute('animation__opacityIn', `property: material.opacity; from: 1; to: 0; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            el.setAttribute('animation__opacityOut', `property: material.opacity; from: 0; to: 1; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+
+            var cursorCenter = document.createElement("a-entity");
+            cursorCenter.setAttribute('geometry', 'primitive: ring; radiusInner:0.000001; radiusOuter:0.0125; thetaLength:180; thetaStart:180;');
+            cursorCenter.setAttribute('material', 'color: #000000; shader: flat; opacity:0.25;');
+            cursorCenter.setAttribute('position', '0 0 0');
+            cursorCenter.setAttribute('animation__opacityIn', `property: material.opacity; from: 0.25; to: 0; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            cursorCenter.setAttribute('animation__opacityOut', `property: material.opacity; from: 0; to: 0.25; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.appendChild(cursorCenter);
+            this.cursorCenter = cursorCenter;
+
+            var cursorShadow = document.createElement("a-entity");
+            cursorShadow.setAttribute('geometry', 'primitive: ring; radiusInner:0.0125; radiusOuter:0.0145');
+            cursorShadow.setAttribute('material', 'color: #000000; shader: flat; opacity:0.25;');
+            cursorShadow.setAttribute('position', '0 0 0');
+            cursorShadow.setAttribute('animation__colorIn', `property: material.color; from: #000000; to: ${data.color}; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            cursorShadow.setAttribute('animation__opacityIn', `property: material.opacity; from: 0.25; to: 1; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            cursorShadow.setAttribute('animation__colorOut', `property: material.color; from: ${data.color}; to: #000000; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            cursorShadow.setAttribute('animation__opacityOut', `property: material.opacity; from: 1; to: 0.25; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.appendChild(cursorShadow);
+            this.cursorShadow = cursorShadow;
+
+            var cursorShadowTL = document.createElement("a-entity");
+            cursorShadowTL.setAttribute('geometry', 'primitive: plane; width:0.005; height:0.005;');
+            cursorShadowTL.setAttribute('material', 'color: #000000; shader: flat; opacity:0.25;');
+            cursorShadowTL.setAttribute('position', '-0.0325 0.0325 0');
+            el.appendChild(cursorShadowTL);
+            this.cursorShadowTL = cursorShadowTL;
+            var cursorShadowBL = document.createElement("a-entity");
+            cursorShadowBL.setAttribute('geometry', 'primitive: plane; width:0.005; height:0.005;');
+            cursorShadowBL.setAttribute('material', 'color: #000000; shader: flat; opacity:0.25;');
+            cursorShadowBL.setAttribute('position', '-0.0325 -0.0325 0');
+            el.appendChild(cursorShadowBL);
+            this.cursorShadowBL = cursorShadowBL;
+            var cursorShadowTR = document.createElement("a-entity");
+            cursorShadowTR.setAttribute('geometry', 'primitive: plane; width:0.005; height:0.005;');
+            cursorShadowTR.setAttribute('material', 'color: #000000; shader: flat; opacity:0.25;');
+            cursorShadowTR.setAttribute('position', '0.0325 0.0325 0');
+            el.appendChild(cursorShadowTR);
+            this.cursorShadowTR = cursorShadowTR;
+            var cursorShadowBR = document.createElement("a-entity");
+            cursorShadowBR.setAttribute('geometry', 'primitive: plane; width:0.005; height:0.005;');
+            cursorShadowBR.setAttribute('material', 'color: #000000; shader: flat; opacity:0.25;');
+            cursorShadowBR.setAttribute('position', '0.0325 -0.0325 0');
+            el.appendChild(cursorShadowBR);
+            this.cursorShadowBR = cursorShadowBR;
+
+            var cursorBoundTL = document.createElement("a-entity");
+            cursorBoundTL.setAttribute('geometry', 'primitive: plane; width:0.015; height:0.0035;');
+            cursorBoundTL.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            cursorBoundTL.setAttribute('position', '-0.03 0.0375 0');
+            el.appendChild(cursorBoundTL);
+            this.cursorBoundTL = cursorBoundTL;
+            var cursorBoundTL2 = document.createElement("a-entity");
+            cursorBoundTL2.setAttribute('geometry', 'primitive: plane; width:0.0035; height:0.015;');
+            cursorBoundTL2.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            cursorBoundTL2.setAttribute('position', '-0.0375 0.03 0');
+            el.appendChild(cursorBoundTL2);
+            this.cursorBoundTL2 = cursorBoundTL2;
+
+            var cursorBoundTR = document.createElement("a-entity");
+            cursorBoundTR.setAttribute('geometry', 'primitive: plane; width:0.015; height:0.0035;');
+            cursorBoundTR.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            cursorBoundTR.setAttribute('position', '0.03 0.0375 0');
+            el.appendChild(cursorBoundTR);
+            this.cursorBoundTR = cursorBoundTR;
+            var cursorBoundTR2 = document.createElement("a-entity");
+            cursorBoundTR2.setAttribute('geometry', 'primitive: plane; width:0.0035; height:0.015;');
+            cursorBoundTR2.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            cursorBoundTR2.setAttribute('position', '0.0375 0.03 0');
+            el.appendChild(cursorBoundTR2);
+            this.cursorBoundTR2 = cursorBoundTR2;
+
+            var cursorBoundBL = document.createElement("a-entity");
+            cursorBoundBL.setAttribute('geometry', 'primitive: plane; width:0.015; height:0.0035;');
+            cursorBoundBL.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            cursorBoundBL.setAttribute('position', '-0.03 -0.0375 0');
+            el.appendChild(cursorBoundBL);
+            this.cursorBoundBL = cursorBoundBL;
+            var cursorBoundBL2 = document.createElement("a-entity");
+            cursorBoundBL2.setAttribute('geometry', 'primitive: plane; width:0.0035; height:0.015;');
+            cursorBoundBL2.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            cursorBoundBL2.setAttribute('position', '-0.0375 -0.03 0');
+            el.appendChild(cursorBoundBL2);
+            this.cursorBoundBL2 = cursorBoundBL2;
+
+            var cursorBoundBR = document.createElement("a-entity");
+            cursorBoundBR.setAttribute('geometry', 'primitive: plane; width:0.015; height:0.0035;');
+            cursorBoundBR.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            cursorBoundBR.setAttribute('position', '0.03 -0.0375 0');
+            el.appendChild(cursorBoundBR);
+            this.cursorBoundBR = cursorBoundBR;
+            var cursorBoundBR2 = document.createElement("a-entity");
+            cursorBoundBR2.setAttribute('geometry', 'primitive: plane; width:0.0035; height:0.015;');
+            cursorBoundBR2.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            cursorBoundBR2.setAttribute('position', '0.0375 -0.03 0');
+            el.appendChild(cursorBoundBR2);
+            this.cursorBoundBR2 = cursorBoundBR2;
+
+            if(fuse){
+                var fuseLoader = document.createElement("a-entity");
+                fuseLoader.setAttribute('geometry', 'primitive: plane; width:0.000001; height:0.01;');
+                fuseLoader.setAttribute('material', `color: ${data.activeColor}; shader: flat; opacity:1;`);
+                fuseLoader.setAttribute('position', '0 -0.05 0');
+                fuseLoader.setAttribute('animation', `property: geometry.width; from: 0; to: 0.075; dur:${fuseAnimationDuration}; delay:${defaultHoverAnimationDuration}; easing:linear; autoplay:false;`);
+                el.appendChild(fuseLoader);
+                this.fuseLoader = fuseLoader;
+            }
+            //end reticle design
+
+        }else if(data.design == 'cross'){    
+            el.setAttribute('geometry', 'primitive: ring; radiusInner:0.035; radiusOuter:0.0375');
+            el.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            el.setAttribute('position', `0 0 ${data.distance}`);
+            el.setAttribute('animation__radiusInnerIn', `property: geometry.radiusInner; from: 0.035; to: 0.0315; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: hovergui`);
+            el.setAttribute('animation__radiusInnerOut', `property: geometry.radiusInner; from: 0.0315; to: 0.035; dur:${defaultHoverAnimationDuration}; easing:linear; startEvents: leavegui`);
+
+            var cursorShadow = document.createElement("a-entity");
+            cursorShadow.setAttribute('geometry', 'primitive: ring; radiusInner:0.0375; radiusOuter:0.04; thetaLength:360');
+            cursorShadow.setAttribute('material', 'color: #000000; shader: flat; opacity:0.25;');
+            cursorShadow.setAttribute('position', '0 0 0');
+            el.appendChild(cursorShadow);
+            this.cursorShadow = cursorShadow;
+
+            var cursorVerticalTop = document.createElement("a-entity");
+            cursorVerticalTop.setAttribute('geometry', 'primitive: plane; width:0.0035; height:0.01875');
+            cursorVerticalTop.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            cursorVerticalTop.setAttribute('position', '0 0.028125 0');
+            cursorVerticalTop.setAttribute('animation__widthIn', `property: geometry.width; from: 0.0035; to: 0.007; dur:${fuseAnimationDuration}; easing:linear; startEvents: hovergui`);
+            cursorVerticalTop.setAttribute('animation__widthOut', `property: geometry.width; from: 0.007; to: 0.0035; dur:${fuseAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.appendChild(cursorVerticalTop);
+            this.cursorVerticalTop = cursorVerticalTop;
+
+            var cursorVerticalBottom = document.createElement("a-entity");
+            cursorVerticalBottom.setAttribute('geometry', 'primitive: plane; width:0.0035; height:0.01875');
+            cursorVerticalBottom.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            cursorVerticalBottom.setAttribute('position', '0 -0.028125 0');
+            cursorVerticalBottom.setAttribute('animation__widthIn', `property: geometry.width; from: 0.0035; to: 0.007; dur:${fuseAnimationDuration}; easing:linear; startEvents: hovergui`);
+            cursorVerticalBottom.setAttribute('animation__widthOut', `property: geometry.width; from: 0.007; to: 0.0035; dur:${fuseAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.appendChild(cursorVerticalBottom);
+            this.cursorVerticalBottom = cursorVerticalBottom;
+
+            var cursorHorizontalLeft = document.createElement("a-entity");
+            cursorHorizontalLeft.setAttribute('geometry', 'primitive: plane; width:0.01875; height:0.0035');
+            cursorHorizontalLeft.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            cursorHorizontalLeft.setAttribute('position', '-0.028125 0 0');
+            cursorHorizontalLeft.setAttribute('animation__heightIn', `property: geometry.height; from: 0.0035; to: 0.007; dur:${fuseAnimationDuration}; easing:linear; startEvents: hovergui`);
+            cursorHorizontalLeft.setAttribute('animation__heightOut', `property: geometry.height; from: 0.007; to: 0.0035; dur:${fuseAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.appendChild(cursorHorizontalLeft);
+            this.cursorHorizontalLeft = cursorHorizontalLeft;
+
+            var cursorHorizontalRight = document.createElement("a-entity");
+            cursorHorizontalRight.setAttribute('geometry', 'primitive: plane; width:0.01875; height:0.0035');
+            cursorHorizontalRight.setAttribute('material', `color: ${data.color}; shader: flat; opacity:1;`);
+            cursorHorizontalRight.setAttribute('position', '0.028125 0 0');
+            cursorHorizontalRight.setAttribute('animation__heightIn', `property: geometry.height; from: 0.0035; to: 0.007; dur:${fuseAnimationDuration}; easing:linear; startEvents: hovergui`);
+            cursorHorizontalRight.setAttribute('animation__heightOut', `property: geometry.height; from: 0.007; to: 0.0035; dur:${fuseAnimationDuration}; easing:linear; startEvents: leavegui`);
+            el.appendChild(cursorHorizontalRight);
+            this.cursorHorizontalRight = cursorHorizontalRight;
+
+            if(fuse){
+                var fuseLoader = document.createElement("a-entity");
+                fuseLoader.setAttribute('geometry', 'primitive: ring; radiusInner:0.0415; radiusOuter:0.0485; thetaLength:0');
+                fuseLoader.setAttribute('material', `color: ${data.activeColor}; shader: flat; opacity:1;`);
+                fuseLoader.setAttribute('position', `0 0 0`);
+                fuseLoader.setAttribute('animation', `property: geometry.thetaLength; from: 0; to: 360; dur:${fuseAnimationDuration}; delay:${defaultHoverAnimationDuration}; easing:linear; autoplay:false;`);
+                el.appendChild(fuseLoader);
+                this.fuseLoader = fuseLoader;
+            }
+            //end cross design        
+        }
+
+        el.addEventListener('mouseenter', function () {
+            console.log("in gui-cursor mousenter, el: "+el);
+            el.emit('hovergui');
+            if (data.design == 'dot' || data.design == 'ring') {
+                cursorShadow.emit('hovergui');
+            }else if (data.design == 'cross') {
+                cursorShadow.emit('hovergui');
+                cursorVerticalTop.emit('hovergui');
+                cursorVerticalBottom.emit('hovergui');
+                cursorHorizontalLeft.emit('hovergui');
+                cursorHorizontalRight.emit('hovergui');
+            }else if (data.design == 'reticle') {
+                centerHoverAniOpacity.emit('hovergui');
+                cursorHoverAniColor.emit('hovergui');
+                cursorHoverAniOpacity.emit('hovergui');
+            }
+
+        });
+
+        el.addEventListener('mouseleave', function () {
+            console.log("in gui-cursor mouseleave, el: "+el);
+            el.emit('leavegui');
+            if (data.design == 'dot' || data.design == 'ring') {
+                cursorShadow.emit('leavegui');
+            }else if (data.design == 'cross') {
+                cursorVerticalTop.emit('leavegui');
+                cursorVerticalBottom.emit('leavegui');
+                cursorHorizontalLeft.emit('leavegui');
+                cursorHorizontalRight.emit('leavegui');
+            }else if (data.design == 'reticle') {
+                centerHoverAniOpacity.emit('leavegui');
+                cursorHoverAniColor.emit('leavegui');
+                cursorHoverAniOpacity.emit('leavegui');
+            }
+
+            if(fuse){
+                fuseLoader.object3D.el.components.animation.animation.pause();
+                fuseLoader.object3D.el.components.animation.animation.seek(0);
+            }
+
+            el.setAttribute('scale', '1 1 1');
+        });
+
+        if(fuse){
+            el.addEventListener('fusing', function () {
+                fuseLoader.object3D.el.components.animation.animation.play();
+            });
+        }
+
+        el.addEventListener("stateremoved", function (evt) {
+            console.log("evt.detail " +evt.detail)
+            if (evt.detail === 'cursor-fusing') {
+                if(data.design == 'dot' || data.design == 'ring' || data.design == 'cross' ){  
+                    if(fuse){
+                        fuseLoader.object3D.el.components.animation.animation.pause();
+                        fuseLoader.object3D.el.components.animation.animation.seek(0);
+                        AFRAME.utils.entity.setComponentProperty(fuseLoader, 'geometry.thetaLength', '0');
+                    }
+                }else if(data.design == 'reticle'){
+                    if(fuse){
+                        fuseLoader.object3D.el.components.animation.animation.pause();
+                        fuseLoader.object3D.el.components.animation.animation.seek(0);
+                        AFRAME.utils.entity.setComponentProperty(fuseLoader, 'geometry.width', '0.000001');
+                    }                    
+                }
+            }else if(evt.detail === 'cursor-hovering') {
+                if(data.design == 'dot' || data.design == 'ring' ){  
+                    AFRAME.utils.entity.setComponentProperty(this, 'scale', '1 1 1');
+                    if(fuse){
+                        AFRAME.utils.entity.setComponentProperty(fuseLoader, 'geometry.thetaLength', '0');
+                    }
+                }else if(data.design == 'cross' ){  
+                    if(fuse){
+                        AFRAME.utils.entity.setComponentProperty(fuseLoader, 'geometry.thetaLength', '0');
+                    }
+                }else if(data.design == 'reticle' ){  
+                    if(fuse){
+                        AFRAME.utils.entity.setComponentProperty(fuseLoader, 'geometry.width', '0.000001');
+                    }
+                }
+            }
+        });
+
+
+    },
+    update: function () {
+    },
+    tick: function () {
+    },
+    remove: function () {
+    },
+    pause: function () {
+    },
+    play: function () {
+    }
+});
+
+AFRAME.registerPrimitive( 'a-gui-cursor', {
+    defaultComponents: {
+        'cursor': {},
+        'gui-cursor': { }
+    },
+    mappings: {
+        'fuse': 'cursor.fuse',
+        'fuse-timeout': 'cursor.fuseTimeout',
+        'color': 'gui-cursor.color',
+        'hover-color': 'gui-cursor.hoverColor',
+        'active-color': 'gui-cursor.activeColor',
+        'distance': 'gui-cursor.distance',
+        'design': 'gui-cursor.design'
+    }
+});
+},{}],7:[function(require,module,exports){
+require('../scripts/vars.js')
+
+/*  //trying to figure out global styles that customize gui items
+var styles = StyleSheet.create({
+    fontFamily: {
+        type: 'string',
+        default: 'Helvetica'
+    },
+    fontColor: {
+        type: 'string',
+        default: key_offwhite
+    },
+    borderColor: {
+        type: 'string',
+        default: key_offwhite
+    },
+    backgroundColor: {
+        type: 'string',
+        default: key_grey
+    },
+    hoverColor: {
+        type: 'string',
+        default: key_grey_dark
+    },
+    activeColor: {
+        type: 'string',
+        default: key_orange
+    },
+    handleColor: {
+        type: 'string',
+        default: key_offwhite
+    },
+});
+*/
+
+var onAppendChildToContainer = function(elem, f) {
+   // console.log("in onAppend, elem: "+elem);
+  var observer = new MutationObserver(function(mutations, me) {
+      //console.log("in mutationObserver, me: "+me);
+      mutations.forEach(function(m) {
+        console.log(m);
+        if (m.addedNodes.length) {
+            f(m.target, m.addedNodes)
+        }
+    })
+  })
+  observer.observe(elem, {childList: true})
+}
+
+AFRAME.registerComponent('gui-flex-container', {
+    schema: {
+        flexDirection: { type: 'string', default: 'row' },
+        justifyContent: { type: 'string', default: 'flexStart' },
+        alignItems: { type: 'string', default: 'flexStart' },
+        itemPadding: { type: 'number', default: 0.0 },
+        opacity: { type: 'number', default: 0.0 },
+        isTopContainer: {type: 'boolean', default: false},
+        panelColor: {type: 'string', default: key_grey},
+
+//global settings for GUI items
+        styles: {
+            fontFamily: {type: 'string', default: 'Helvetica'},
+            fontColor: {type: 'string', default: key_offwhite},
+            borderColor: {type: 'string', default: key_offwhite},
+            backgroundColor: {type: 'string', default: key_grey},
+            hoverColor: {type: 'string', default: key_grey_dark},
+            activeColor: {type: 'string', default: key_orange},
+            handleColor: {type: 'string', default: key_offwhite},
+        }
+
+    },
+    init: function () {
+        console.log("in aframe-gui-component init for: "+this.el.getAttribute("id"));
+        var containerGuiItem = this.el.getAttribute("gui-item");
+
+        if (this.data.isTopContainer) {
+            this.setBackground();
+        }
+
+        this.el.setAttribute('geometry', `primitive: plane; height: ${containerGuiItem.height}; width: ${containerGuiItem.width};`);
+        this.el.setAttribute('material', `shader: flat; transparent: true; opacity: ${this.data.opacity}; alphaTest: 0.5; color: ${this.data.panelColor}; side:front;`);
+
+        this.children = this.el.getChildEntities();
+        //console.log("childElements: "+this.children);
+        //console.log("num child Elements: "+this.children.length);
+
+        // coordinate system is 0, 0 in the top left
+        var cursorX = 0;
+        var cursorY = 0;
+        if (this.data.flexDirection == 'row') {
+            // first figure out cursor position on main X axis
+            if (this.data.justifyContent == 'flexStart') {
+                cursorX = 0;
+            } else if (this.data.justifyContent == 'center' || this.data.justifyContent == 'flexEnd') {
+                var rowWidth = 0;
+                for (var i = 0; i < this.children.length; i++) {
+                    var childElement = this.children[i];
+                    var childGuiItem = childElement.getAttribute("gui-item");
+                    rowWidth = rowWidth + childGuiItem.margin.w + childGuiItem.width + childGuiItem.margin.y;
+                }
+                if (this.data.justifyContent == 'center') {
+                    cursorX = (containerGuiItem.width - rowWidth)*0.5;
+                } else if (this.data.justifyContent == 'flexEnd') {
+                    cursorX = containerGuiItem.width - rowWidth;
+                }
+            }
+            // then figure out baseline / cursor position on cross Y axis
+            if (this.data.alignItems == 'center') {
+                cursorY = containerGuiItem.height; // baseline is center
+            } else if (this.data.alignItems == 'flexStart') {
+                cursorY = 0; // baseline is top of container
+            } else if (this.data.alignItems == 'flexEnd') {
+                cursorY = containerGuiItem.height; // baseline is bottom of container
+            }
+        } else if (this.data.flexDirection == 'column') {
+            // first figure out cursor position on main Y axis
+            if (this.data.justifyContent == 'flexStart') {
+                cursorY = 0;
+            } else if (this.data.justifyContent == 'center' || this.data.justifyContent == 'flexEnd') {
+                var columnHeight = 0;
+                for (var i = 0; i < this.children.length; i++) {
+                    var childElement = this.children[i];
+                    //console.log("childElement: "+childElement);
+                    var childGuiItem = childElement.getAttribute("gui-item");
+                    //console.log("childGuiItem: "+childGuiItem);
+                    columnHeight = columnHeight + childGuiItem.margin.x + childGuiItem.height + childGuiItem.margin.z;
+                }
+                if (this.data.justifyContent == 'center') {
+                    cursorY = (containerGuiItem.height - columnHeight)*0.5;
+                } else if (this.data.justifyContent == 'flexEnd') {
+                    cursorY = containerGuiItem.height - columnHeight;
+                }
+            }
+            // then figure out baseline / cursor position on cross X axis
+            if (this.data.alignItems == 'flexStart') {
+                cursorX = 0; // baseline is left
+            } else if (this.data.alignItems == 'center') {
+                cursorX = containerGuiItem.width*0.5; // baseline is center
+            } else if (this.data.alignItems == 'flexEnd') {
+                cursorX = 0; // baseline is right
+            }
+        }
+        //console.log(`initial cursor position for ${this.el.getAttribute("id")}: ${cursorX} ${cursorY} 0.01`)
+
+        // not that cursor positions are determined, loop through and lay out items
+        var wrapOffsetX = 0; // not used yet since wrapping isn't supported
+        var wrapOffsetY = 0; // not used yet since wrapping isn't supported
+        for (var i = 0; i < this.children.length; i++) {
+            var childElement = this.children[i];
+            // TODO: change this to call gedWidth() and setWidth() of component
+            var childPositionX = 0;
+            var childPositionY = 0;
+            var childPositionZ = 0.01;
+            var childGuiItem = childElement.getAttribute("gui-item");
+
+            // now get object position in aframe container cordinates (0, 0 is center)
+            if (childGuiItem) {
+                if (this.data.flexDirection == 'row') {
+                    if (this.data.alignItems == 'center') {
+                        childPositionY = 0; // child position is always 0 for center vertical alignment
+                    } else if (this.data.alignItems == 'flexStart') {
+                        childPositionY = containerGuiItem.height * 0.5 - childGuiItem.margin.x - childGuiItem.height;
+                    } else if (this.data.alignItems == 'flexEnd') {
+                        childPositionY = -containerGuiItem.height * 0.5 + childGuiItem.margin.z + childGuiItem.height;
+                    }
+                    childPositionX = -containerGuiItem.width*0.5 + cursorX + childGuiItem.margin.w + childGuiItem.width * 0.5
+                    cursorX = cursorX + childGuiItem.margin.w + childGuiItem.width + childGuiItem.margin.y;
+                } else if (this.data.flexDirection == 'column') {
+                    if (this.data.alignItems == 'center') {
+                        childPositionX = 0; // child position is always 0 to center
+                    } else if (this.data.alignItems == 'flexStart') {
+                        childPositionX = -containerGuiItem.width*0.5 + childGuiItem.margin.w + childGuiItem.width * 0.5;
+                    } else if (this.data.alignItems == 'flexEnd') {
+                        childPositionX = containerGuiItem.width*0.5 - childGuiItem.margin.y - childGuiItem.width * 0.5;
+                    }
+                    childPositionY = containerGuiItem.height*0.5 - cursorY -  - childGuiItem.margin.x - childGuiItem.height * 0.5
+                    cursorY = cursorY + childGuiItem.margin.x + childGuiItem.height + childGuiItem.margin.z;
+                }
+                //console.log(`child element position for ${childElement.id}: ${childPositionX} ${childPositionY} ${childPositionZ}`)
+                childElement.setAttribute('position', `${childPositionX} ${childPositionY} ${childPositionZ}`)
+                childElement.setAttribute('geometry', `primitive: plane; height: ${childGuiItem.height}; width: ${childGuiItem.width};`)
+                var childFlexContainer = childElement.components['gui-flex-container']
+                if (childFlexContainer) {
+                    childFlexContainer.setBackground();
+                }
+            }
+        }
+
+      onAppendChildToContainer(this.el, function(containerElement, addedChildren) {
+        //console.log('****** containerElement: ' + containerElement);
+        //console.log('****** addedChildren: ' + addedChildren.length);
+        // containerElement.components['gui-flex-container'].init();
+        var addedChild = addedChildren[0];
+        addedChildren[0].addEventListener("loaded", (e) => {
+          //console.log('in appended element loaded handler: '+e);
+          //console.log('addedChild: '+addedChild);
+          //console.log('****** containerElement: ' + containerElement);
+          containerElement.components['gui-flex-container'].init();
+        })
+      })
+
+    },
+    update: function () {},
+    tick: function () {},
+    remove: function () {},
+    pause: function () {},
+    play: function () {},
+    getElementSize: function () {},
+    setBackground: function () {
+        if (this.data.opacity > 0) {
+            console.log("panel position: " + JSON.stringify(this.el.getAttribute("position")));
+            var guiItem = this.el.getAttribute("gui-item");
+            var panelBackground = document.createElement("a-entity");
+
+            panelBackground.setAttribute('geometry', `primitive: box; height: ${guiItem.height}; width: ${guiItem.width}; depth:0.025;`);
+            console.log("about to set panel background color to: : " + this.data.panelColor);
+            panelBackground.setAttribute('material', `shader: standard; depthTest: true; opacity: ${this.data.opacity}; color: ${this.data.panelColor};`);
+            panelBackground.setAttribute('position', this.el.getAttribute("position").x + ' ' + this.el.getAttribute("position").y + ' ' + (this.el.getAttribute("position").z - 0.0125));
+            panelBackground.setAttribute('rotation', this.el.getAttribute("rotation").x + ' ' + this.el.getAttribute("rotation").y + ' ' + this.el.getAttribute("rotation").z);
+            this.el.parentNode.insertBefore(panelBackground, this.el);
+        }
+
+    },
+
+});
+
+AFRAME.registerPrimitive( 'a-gui-flex-container', {
+    defaultComponents: {
+        'gui-item': { type: 'flex-container' },
+        'gui-flex-container': { }
+    },
+    mappings: {
+        'width': 'gui-item.width',
+        'height': 'gui-item.height',
+        'margin': 'gui-item.margin',
+        'flex-direction': 'gui-flex-container.flexDirection',
+        'justify-content': 'gui-flex-container.justifyContent',
+        'align-items': 'gui-flex-container.alignItems',
+        'item-padding': 'gui-flex-container.itemPadding',
+        'opacity': 'gui-flex-container.opacity',
+        'is-top-container': 'gui-flex-container.isTopContainer',
+        'panel-color': 'gui-flex-container.panelColor',
+        'font-family': 'gui-flex-container.styles.fontFamily',
+        'font-color': 'gui-flex-container.styles.fontColor',
+        'border-color': 'gui-flex-container.styles.borderColor',
+        'background-color': 'gui-flex-container.styles.backgroundColor',
+        'hover-color': 'gui-flex-container.styles.hoverColor',
+        'active-color': 'gui-flex-container.styles.activeColor',
+        'handle-color': 'gui-flex-container.styles.handleColor',
+    }
+});
+
+},{"../scripts/vars.js":21}],8:[function(require,module,exports){
+AFRAME.registerComponent('gui-icon-button', {
+    schema: {
+        on: {default: 'click'},
+        toggle: {type: 'boolean', default: false},
+        icon: {type: 'string', default: ''},
+        iconActive: {type: 'string', default: ''},
+        fontFamily: {type: 'string', default: 'Arial'},
+        iconFontSize: {type: 'string', default: '400px'},
+        fontSize: {type: 'string', default: '150px'},
+        fontColor: {type: 'string', default: key_offwhite},
+        borderColor: {type: 'string', default: key_offwhite},
+        backgroundColor: {type: 'string', default: key_grey},
+        hoverColor: {type: 'string', default: key_grey_dark},
+        activeColor: {type: 'string', default: key_orange},
+    },
+    init: function() {
+
+        var data = this.data;
+        var el = this.el;
+        var guiItem = el.getAttribute("gui-item");
+        //console.log("in icon button, guiItem: "+JSON.stringify(guiItem));
+        var guiInteractable = el.getAttribute("gui-interactable");
+        //console.log("in button, guiInteractable: "+JSON.stringify(guiInteractable));
+        var multiplier = 512; // POT conversion
+        var canvasWidth = guiItem.height*multiplier; //square
+        var canvasHeight = guiItem.height*multiplier;
+        var toggleState = this.toggleState = data.toggle;
+
+        var canvasContainer = document.createElement('div');
+        canvasContainer.setAttribute('class', 'visuallyhidden');
+        document.body.appendChild(canvasContainer);
+        var canvas = document.createElement("canvas");
+        this.canvas = canvas;
+        canvas.setAttribute('width', canvasWidth);
+        canvas.setAttribute('height', canvasHeight);
+        canvas.id = getUniqueId('canvasIcon');
+        canvasContainer.appendChild(canvas);
+
+        var ctx = this.ctx = canvas.getContext('2d');
+
+        el.setAttribute('geometry', `primitive: plane; height: ${guiItem.height}; width: ${guiItem.width};`);
+        el.setAttribute('material', `shader: flat; transparent: true; opacity: 0.0; alphaTest: 0.5; side:double; color:${data.backgroundColor};`);
+
+        drawIcon(ctx, canvas, data.iconFontSize, data.icon, data.fontColor, 1);
+
+        var buttonContainer = document.createElement("a-entity");
+        buttonContainer.setAttribute('geometry', `primitive: cylinder; radius: ${guiItem.height/2}; height: 0.02;`);
+        buttonContainer.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor}`);
+        buttonContainer.setAttribute('rotation', '90 0 0');
+        buttonContainer.setAttribute('position', '0 0 0.01');
+        el.appendChild(buttonContainer);
+
+        var buttonEntity = document.createElement("a-entity");
+        buttonEntity.setAttribute('geometry', `primitive: cylinder; radius: ${(guiItem.height/2.05)}; height: 0.04;`);
+        buttonEntity.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.backgroundColor}`);
+        buttonEntity.setAttribute('rotation', '90 0 0');
+        buttonEntity.setAttribute('position', '0 0 0.02');
+        el.appendChild(buttonEntity);
+        this.buttonEntity = buttonEntity;
+
+        var textEntity = document.createElement("a-entity");
+        textEntity.setAttribute('geometry', `primitive: plane; width: ${guiItem.height/2}; height: ${guiItem.height/2};`);
+        textEntity.setAttribute('material', `shader: flat; src: #${canvas.id}; transparent: true; opacity: 1; alphaTest: 0.5; side:front;`);
+        textEntity.setAttribute('position', '0 0 0.041');
+        el.appendChild(textEntity);
+
+        el.addEventListener('mouseenter', function(evt) {
+            buttonEntity.removeAttribute('animation__leave');
+            buttonEntity.setAttribute('animation__enter', `property: material.color; from: ${data.backgroundColor}; to:${data.hoverColor}; dur:200;`);
+        });
+        el.addEventListener('mouseleave', function(evt) {
+            if (!(data.toggle)) {
+                buttonEntity.removeAttribute('animation__click');
+            }
+            buttonEntity.removeAttribute('animation__enter');
+            buttonEntity.setAttribute('animation__leave', `property: material.color; from: ${data.hoverColor}; to:${data.backgroundColor}; dur:200; easing: easeOutQuad;`);
+        });
+        el.addEventListener(data.on, function(evt) {
+            if (!(data.toggle)) { // if not toggling flashing active state
+                buttonEntity.setAttribute('animation__click', `property: material.color; from: ${data.activeColor}; to:${data.backgroundColor}; dur:400; easing: easeOutBack;`);
+            }else{
+                buttonEntity.setAttribute('material', 'color', data.activeColor);
+            }
+
+            var clickActionFunctionName = guiInteractable.clickAction;
+            console.log("in button, clickActionFunctionName: "+clickActionFunctionName);
+            // find object
+            var clickActionFunction = window[clickActionFunctionName];
+            //console.log("clickActionFunction: "+clickActionFunction);
+            // is object a function?
+            if (typeof clickActionFunction === "function") clickActionFunction(evt);
+        });
+
+        ////WAI ARIA Support
+        el.setAttribute('role', 'button');
+
+
+    },
+    play: function () {
+
+    },
+    update: function (oldData) {
+        console.log("In button update, toggle: "+this.toggleState);
+    },
+    setActiveState: function (activeState) {
+        console.log("in setActiveState function");
+        this.data.toggle = this.toggleState = activeState;
+        if (!activeState) {
+            this.buttonEntity.setAttribute('material', 'color', this.data.backgroundColor);
+        } else {
+
+        }
+    },
+});
+
+AFRAME.registerPrimitive( 'a-gui-icon-button', {
+    defaultComponents: {
+        'gui-interactable': { },
+        'gui-item': { type: 'icon-button' },
+        'gui-icon-button': { }
+    },
+    mappings: {
+        'onclick': 'gui-interactable.clickAction',
+        'onhover': 'gui-interactable.hoverAction',
+        'key-code': 'gui-interactable.keyCode',
+        'width': 'gui-item.width',
+        'height': 'gui-item.height',
+        'margin': 'gui-item.margin',
+        'on': 'gui-icon-button.on',
+        'font-color': 'gui-icon-button.fontColor',
+        'font-family': 'gui-icon-button.fontFamily',
+        'border-color': 'gui-icon-button.borderColor',
+        'background-color': 'gui-icon-button.backgroundColor',
+        'hover-color': 'gui-icon-button.hoverColor',
+        'active-color': 'gui-icon-button.activeColor',
+        'toggle': 'gui-icon-button.toggle',
+        'icon': 'gui-icon-button.icon',
+        'icon-font-size': 'gui-icon-button.iconFontSize',
+        'icon-active': 'gui-icon-button.iconActive',
+    }
+});
+
+},{}],9:[function(require,module,exports){
+AFRAME.registerComponent('gui-icon-label-button', {
+    schema: {
+        on: {default: 'click'},
+        icon: {type: 'string', default: ''},
+        iconActive: {type: 'string', default: ''},
+        iconFontSize: {type: 'string', default: '400px'},
+        text: {type: 'string', default: ''},
+        toggle: {type: 'boolean', default: false},
+        fontSize: {type: 'string', default: '150px'},
+        fontFamily: {type: 'string', default: 'Arial'},
+        fontColor: {type: 'string', default: key_offwhite},
+        borderColor: {type: 'string', default: key_offwhite},
+        backgroundColor: {type: 'string', default: key_grey},
+        hoverColor: {type: 'string', default: key_grey_dark},
+        activeColor: {type: 'string', default: key_orange},
+    },
+    init: function() {
+
+        var data = this.data;
+        var el = this.el;
+        var guiItem = el.getAttribute("gui-item");
+        var toggleState = this.toggleState = data.toggle;
+
+        el.setAttribute('geometry', `primitive: plane; height: ${guiItem.height}; width: ${guiItem.width};`);
+        el.setAttribute('material', `shader: flat; side:front; color:${data.backgroundColor};`);
+
+        var buttonContainer = document.createElement("a-entity");
+        buttonContainer.setAttribute('geometry', `primitive: box; width: ${guiItem.width}; height: ${guiItem.height}; depth: 0.02;`);
+        buttonContainer.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor}`);
+        buttonContainer.setAttribute('rotation', '0 0 0');
+        buttonContainer.setAttribute('position', '0 0 0.01');
+        el.appendChild(buttonContainer);
+
+        var buttonEntity = document.createElement("a-entity");
+        buttonEntity.setAttribute('geometry', `primitive: box; width: ${(guiItem.width-0.025)}; height: ${(guiItem.height-0.025)}; depth: 0.04;`);
+        buttonEntity.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.backgroundColor}`);
+        buttonEntity.setAttribute('rotation', '0 0 0');
+        buttonEntity.setAttribute('position', '0 0 0.02');
+        el.appendChild(buttonEntity);
+        this.buttonEntity = buttonEntity;
+
+        var multiplier = 1024; // POT conversion
+        if(data.text != ''){
+            var multiplier = 512;
+        }
+
+        var canvasContainer = document.createElement('div');
+        canvasContainer.setAttribute('class', 'visuallyhidden');
+        document.body.appendChild(canvasContainer);
+
+        var iconCanvasWidth = guiItem.height*multiplier; //square
+        var iconCanvasHeight = guiItem.height*multiplier;
+        var iconCanvas = document.createElement("canvas");
+        this.iconCanvas = iconCanvas;
+        iconCanvas.className = "visuallyhidden";
+        iconCanvas.setAttribute('width', iconCanvasWidth);
+        iconCanvas.setAttribute('height', iconCanvasHeight);
+        iconCanvas.id = getUniqueId('canvasIcon');
+        canvasContainer.appendChild(iconCanvas);
+
+        var ctxIcon = this.ctxIcon = iconCanvas.getContext('2d');
+        drawIcon(ctxIcon, iconCanvas, data.iconFontSize, data.icon, data.fontColor, 1);
+
+        var iconEntityX = 0;
+        if(data.text != ''){
+            iconEntityX = -guiItem.width*0.5 + guiItem.height*0.5;
+        }
+
+        var iconEntity = document.createElement("a-entity");
+
+        if(data.text != ''){
+            iconEntity.setAttribute('geometry', `primitive: plane; width: ${guiItem.height/2}; height: ${guiItem.height/2};`);
+        }else{
+            iconEntity.setAttribute('geometry', `primitive: plane; width: ${guiItem.width/2}; height: ${guiItem.height/2};`);
+        }
+        iconEntity.setAttribute('material', `shader: flat; src: #${iconCanvas.id}; transparent: true; opacity: 1; side:front;`);
+        iconEntity.setAttribute('position', `${iconEntityX} 0 0.041`);
+        el.appendChild(iconEntity);
+
+        if(data.text != ''){
+
+            var labelWidth = guiItem.width - guiItem.height;
+            var canvasWidth = labelWidth*multiplier;
+            var canvasHeight = guiItem.height*multiplier;
+            var labelCanvas = document.createElement("canvas");
+            this.labelCanvas = labelCanvas;
+            labelCanvas.setAttribute('width', canvasWidth);
+            labelCanvas.setAttribute('height', canvasHeight);
+            labelCanvas.id = getUniqueId('canvasLabel');
+            canvasContainer.appendChild(labelCanvas);
+
+            var ctxLabel = this.ctxLabel = labelCanvas.getContext('2d');
+            drawText(this.ctxLabel, this.labelCanvas, data.text, data.fontSize, data.fontFamily, data.fontColor, 1,'left','middle');
+
+            var labelEntityX = guiItem.height*0.5 - guiItem.width*0.05;
+            var labelEntity = document.createElement("a-entity");
+            labelEntity.setAttribute('geometry', `primitive: plane; width: ${labelWidth}; height: ${guiItem.height/1.05};`);
+            labelEntity.setAttribute('material', `shader: flat; src: #${labelCanvas.id}; transparent: true; opacity: 1; side:front;`);
+            labelEntity.setAttribute('position', `${labelEntityX} 0 0.041`);
+            el.appendChild(labelEntity);
+
+        }
+
+        el.addEventListener('mouseenter', function(evt) {
+            buttonEntity.removeAttribute('animation__leave');
+            buttonEntity.setAttribute('animation__enter', `property: material.color; from: ${data.backgroundColor}; to:${data.hoverColor}; dur:200;`);
+        });
+        el.addEventListener('mouseleave', function(evt) {
+            if (!(data.toggle)) {
+                buttonEntity.removeAttribute('animation__click');
+            }
+            buttonEntity.removeAttribute('animation__enter');
+            buttonEntity.setAttribute('animation__leave', `property: material.color; from: ${data.hoverColor}; to:${data.backgroundColor}; dur:200; easing: easeOutQuad;`);
+        });
+        el.addEventListener(data.on, function(evt) {
+            if (!(data.toggle)) { // if not toggling flashing active state
+                buttonEntity.setAttribute('animation__click', `property: material.color; from: ${data.activeColor}; to:${data.backgroundColor}; dur:400; easing: easeOutQuad;`);
+            }else{
+                buttonEntity.setAttribute('material', 'color', data.activeColor);
+            }
+            var guiInteractable = el.getAttribute("gui-interactable");
+            var clickActionFunctionName = guiInteractable.clickAction;
+            console.log("in button, clickActionFunctionName: "+clickActionFunctionName);
+            // find object
+            var clickActionFunction = window[clickActionFunctionName];
+            //console.log("clickActionFunction: "+clickActionFunction);
+            // is object a function?
+            if (typeof clickActionFunction === "function") clickActionFunction(evt);
+        });
+
+
+        ////WAI ARIA Support
+        el.setAttribute('role', 'button');
+
+    },
+    play: function () {
+
+    },
+    update: function (oldData) {
+        console.log("In button update, toggle: "+this.toggleState);
+    },
+});
+
+AFRAME.registerPrimitive( 'a-gui-icon-label-button', {
+    defaultComponents: {
+        'gui-interactable': { },
+        'gui-item': { type: 'icon-label-button' },
+        'gui-icon-label-button': { }
+    },
+    mappings: {
+        'onclick': 'gui-interactable.clickAction',
+        'onhover': 'gui-interactable.hoverAction',
+        'key-code': 'gui-interactable.keyCode',
+        'width': 'gui-item.width',
+        'height': 'gui-item.height',
+        'margin': 'gui-item.margin',
+        'on': 'gui-icon-label-button.on',
+        'font-color': 'gui-icon-label-button.fontColor',
+        'font-family': 'gui-icon-label-button.fontFamily',
+        'font-size': 'gui-icon-label-button.fontSize',
+        'border-color': 'gui-icon-label-button.borderColor',
+        'background-color': 'gui-icon-label-button.backgroundColor',
+        'hover-color': 'gui-icon-label-button.hoverColor',
+        'active-color': 'gui-icon-label-button.activeColor',
+        'toggle': 'gui-icon-label-button.toggle',
+        'icon': 'gui-icon-label-button.icon',
+        'icon-active': 'gui-icon-label-button.iconActive',
+        'icon-font-size': 'gui-icon-label-button.iconFontSize',
+        'value': 'gui-icon-label-button.text'
+    }
+});
+
+},{}],10:[function(require,module,exports){
+AFRAME.registerComponent('gui-input', {
+    schema: {
+        align: {type: 'string', default: 'left'},
+        on: {default: 'click'},
+        text: {type: 'string', default: ''},
+        toggle: {type: 'boolean', default: false},
+        fontSize: {type: 'string', default: '150px'},
+        fontFamily: {type: 'string', default: 'Arial'},
+        fontColor: {type: 'string', default: key_grey_dark},
+        fontWeight: {type: 'string', default: 'normal'},
+        borderColor: {type: 'string', default: key_grey_dark},
+        borderHoverColor: {type: 'string', default: key_grey},
+        backgroundColor: {type: 'string', default: key_offwhite},
+        hoverColor: {type: 'string', default: key_white},
+        activeColor: {type: 'string', default: key_orange},
+    },
+    init: function() {
+
+        var data = this.data;
+        var el = this.el;
+        var guiItem = el.getAttribute("gui-item");
+        var multiplier = 512; // POT conversion
+        var canvasWidth = guiItem.width*multiplier;
+        var canvasHeight = guiItem.height*multiplier;
+
+        var canvasContainer = document.createElement('div');
+        canvasContainer.setAttribute('class', 'visuallyhidden');
+        document.body.appendChild(canvasContainer);
+
+        var canvas = document.createElement("canvas");
+        this.canvas = canvas;
+        canvas.className = "visuallyhidden";
+        canvas.setAttribute('width', canvasWidth);
+        canvas.setAttribute('height', canvasHeight);
+        canvas.id = getUniqueId('canvas');
+        canvasContainer.appendChild(canvas);
+
+        var ctx = this.ctx = canvas.getContext('2d');
+
+        el.setAttribute('geometry', `primitive: plane; height: ${guiItem.height}; width: ${guiItem.width};`);
+        el.setAttribute('material', `shader: flat; transparent: false; side:front; color:${data.backgroundColor};`);
+
+        this.oldText = data.text;
+
+        drawText(ctx, canvas, data.text, data.fontSize, data.fontFamily, data.fontColor, 1,data.align,'middle', data.fontWeight);
+
+        if (this.inputEntity) {
+            el.removeChild(this.inputEntity);
+        }
+        var inputEntity = document.createElement("a-entity");
+        inputEntity.setAttribute('geometry', `primitive: plane; width: ${guiItem.width/1.05}; height: ${guiItem.height/1.05};`);
+        inputEntity.setAttribute('material', `shader: flat; src: #${canvas.id}; transparent: true; opacity: 1; side:front;`);
+        inputEntity.setAttribute('position', '0 0 0.01');
+        this.inputEntity = inputEntity;
+        el.appendChild(inputEntity);
+
+        var borderTopEntity = document.createElement("a-entity");
+        borderTopEntity.setAttribute('geometry', `primitive: box; width: ${(guiItem.width)}; height: 0.05; depth: 0.02;`);
+        borderTopEntity.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor}`);
+        borderTopEntity.setAttribute('position', `0 -${(guiItem.height/2)-0.025} 0.01`);
+        el.appendChild(borderTopEntity);
+        var borderBottomEntity = document.createElement("a-entity");
+        borderBottomEntity.setAttribute('geometry', `primitive: box; width: ${(guiItem.width)}; height: 0.05; depth: 0.02;`);
+        borderBottomEntity.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor}`);
+        borderBottomEntity.setAttribute('position', `0 ${(guiItem.height/2)-0.025} 0.01`);
+        el.appendChild(borderBottomEntity);
+        var borderLeftEntity = document.createElement("a-entity");
+        borderLeftEntity.setAttribute('geometry', `primitive: box; width: 0.05; height: ${(guiItem.height)}; depth: 0.02;`);
+        borderLeftEntity.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor}`);
+        borderLeftEntity.setAttribute('position', `-${(guiItem.width/2)-0.025} 0 0.01`);
+        el.appendChild(borderLeftEntity);
+        var borderRightEntity = document.createElement("a-entity");
+        borderRightEntity.setAttribute('geometry', `primitive: box; width: 0.05; height: ${(guiItem.height)}; depth: 0.02;`);
+        borderRightEntity.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor}`);
+        borderRightEntity.setAttribute('position', `${(guiItem.width/2)-0.025} 0 0.01`);
+        el.appendChild(borderRightEntity);
+
+        ////WAI ARIA Support
+        el.setAttribute('role', 'input');
+
+        el.addEventListener('mouseenter', function (evt) {
+            el.setAttribute('material', 'color', data.hoverColor);
+            borderTopEntity.setAttribute('material', 'color', data.borderHoverColor);
+            borderBottomEntity.setAttribute('material', 'color', data.borderHoverColor);
+            borderLeftEntity.setAttribute('material', 'color', data.borderHoverColor);
+            borderRightEntity.setAttribute('material', 'color', data.borderHoverColor);
+        });
+
+        el.addEventListener('mouseleave', function (evt) {
+            el.setAttribute('material', 'color', data.backgroundColor);
+            borderTopEntity.setAttribute('material', 'color', data.borderColor);
+            borderBottomEntity.setAttribute('material', 'color', data.borderColor);
+            borderLeftEntity.setAttribute('material', 'color', data.borderColor);
+            borderRightEntity.setAttribute('material', 'color', data.borderColor);
+        });
+
+        el.addEventListener(data.on, function (evt) {
+            console.log('I was clicked at: ', evt.detail.intersection.point);
+            var guiInteractable = el.getAttribute("gui-interactable");
+            console.log("guiInteractable: "+guiInteractable);
+            var clickActionFunctionName = guiInteractable.clickAction;
+            console.log("clickActionFunctionName: "+clickActionFunctionName);
+            // find object
+            var clickActionFunction = window[clickActionFunctionName];
+            //console.log("clickActionFunction: "+clickActionFunction);
+            // is object a function?
+            if (typeof clickActionFunction === "function") clickActionFunction(evt);
+        });
+
+
+    },
+    play: function () {
+
+    },
+    update: function (oldData) {
+        // console.log("In label update, toggle");
+        this.init();
+    },
+    tick() {
+        if (this.data.text !== this.oldText) {
+            // console.log('text was changed, about to draw text: ' + this.data.text);
+            this.oldText = this.data.text;
+            //  drawText(this.ctx, this.canvas, this.data.text, '100px ' + this.data.fontFamily, this.data.fontColor, 1);
+            drawText(this.ctx, this.canvas, this.data.text, this.data.fontSize, this.data.fontFamily, this.data.fontColor, 1,data.align,'middle', this.data.fontWeight);
+        }
+    },
+    appendText(text) {
+        var newText = this.data.text + text;
+        this.el.setAttribute('gui-input', 'text', newText);
+    },
+    delete() {
+        if (this.data.text && this.data.text.length > 0) {
+            var newText = this.data.text.slice(0, -1);
+            this.el.setAttribute('gui-input', 'text', newText);
+        }
+    }
+});
+
+AFRAME.registerPrimitive( 'a-gui-input', {
+    defaultComponents: {
+        'gui-interactable': { },
+        'gui-item': { type: 'input' },
+        'gui-input': { }
+    },
+    mappings: {
+        'background-color': 'gui-input.backgroundColor',
+        'border-color': 'gui-input.borderColor',
+        'border-hover-color': 'gui-input.borderHoverColor',
+        'font-color': 'gui-input.fontColor',
+        'font-family': 'gui-input.fontFamily',
+        'font-size': 'gui-input.fontSize',
+        'height': 'gui-item.height',
+        'hover-color': 'gui-input.hoverColor',
+        'onclick': 'gui-interactable.clickAction',
+        'onhover': 'gui-interactable.hoverAction',
+        'width': 'gui-item.width',
+        'margin': 'gui-item.margin',
+        'value': 'gui-input.inputText',
+    }
+});
+
+},{}],11:[function(require,module,exports){
+AFRAME.registerComponent('gui-interactable', {
+    schema: {
+        clickAction: {type: 'string'},
+        hoverAction: {type: 'string'},
+        keyCode: {type: 'number', default: null},
+        key: {type: 'string', default: null},
+    },
+    init: function () {
+        var _this = this;
+        var data = this.data;
+        var el = this.el;
+
+        if(data.keyCode){
+            window.addEventListener("keydown", function (event) {
+               // console.log('in keydown handler, event key: ' + event.key);
+                if(event.key == data.key){
+                //    console.log("key press by gui-interactable, key: " + data.key);
+                    el.emit('click');
+                } else if (event.keyCode == data.keyCode){
+                //    console.log("key press by gui-interactable, keyCode: " + data.keyCode);
+                    el.emit('click');
+                }
+                event.preventDefault();
+            }, true);
+        }
+    },
+    update: function () {
+    },
+    tick: function () {
+    },
+    remove: function () {
+    },
+    pause: function () {
+    },
+    play: function () {
+    },
+    setClickAction: function (action) {
+        this.data.clickAction = action; //change function dynamically
+    },
+});
+
+},{}],12:[function(require,module,exports){
+AFRAME.registerComponent('gui-item', {
+    schema: {
+        type: {type: 'string'},
+        width: {type: 'number', default: 1},
+        height: {type: 'number', default: 1},
+        margin: { type: 'vec4', default: '0 0 0 0'}
+    },
+    init: function () {
+    },
+    update: function () {
+    },
+    tick: function () {
+    },
+    remove: function () {
+    },
+    pause: function () {
+    },
+    play: function () {
+    },
+});
+
+},{}],13:[function(require,module,exports){
+AFRAME.registerComponent('gui-label', {
+  schema: {
+    text: {type: 'string', default: 'label text'},
+    align: {type: 'string', default: 'center'},
+    labelFor: {type: 'selector', default: null},
+    fontSize: {type: 'string', default: '150px'},
+    fontFamily: {type: 'string', default: 'Helvetica'},
+    fontColor: {type: 'string', default: key_grey_dark},
+    fontWeight: {type: 'string', default: 'normal'},
+    backgroundColor: {type: 'string', default: key_offwhite},
+    opacity: { type: 'number', default: 1.0 },
+    textDepth: { type: 'number', default: 0.001 },
+  },
+  init: function() {
+    var data = this.data;
+    var el = this.el;
+    var guiItem = el.getAttribute("gui-item");
+    var multiplier = 500;
+    var canvasWidth = guiItem.width*multiplier;
+    var canvasHeight = guiItem.height*multiplier;
+
+      var canvasContainer = document.createElement('div');
+      this.canvasContainer = canvasContainer;
+      canvasContainer.setAttribute('class', 'visuallyhidden');
+      canvasContainer.id = getUniqueId('canvasContainer');
+      document.body.appendChild(canvasContainer);
+
+
+      var canvas = document.createElement("canvas");
+      this.canvas = canvas;
+      canvas.className = "visuallyhidden";
+      canvas.setAttribute('width', canvasWidth);
+      canvas.setAttribute('height', canvasHeight);
+      canvas.id = getUniqueId('canvas');
+      canvasContainer.appendChild(canvas);
+
+    var ctx = this.ctx = canvas.getContext('2d');
+
+    el.setAttribute('geometry', `primitive: plane; height: ${guiItem.height}; width: ${guiItem.width};`);
+    el.setAttribute('material', `shader: flat; side:front; color:${data.backgroundColor}; transparent: true; opacity: ${data.opacity}; alphaTest: 0.5;`);
+
+    this.oldText = data.text;
+
+   //  drawText(ctx, canvas, data.text, guiItem.fontSize+' ' + data.fontFamily, data.fontColor, 1);
+
+    drawText(ctx, canvas, data.text, data.fontSize, data.fontFamily, data.fontColor, 1,data.align,'middle', data.fontWeight);
+
+    if (this.textEntity) {
+      el.removeChild(this.textEntity);
+    }
+      var textEntity = document.createElement("a-entity");
+      this.textEntity = textEntity;
+      textEntity.setAttribute('geometry', `primitive: plane; width: ${guiItem.width/1.05}; height: ${guiItem.height/1.05};`);
+      textEntity.setAttribute('material', `shader: flat; src: #${canvas.id}; transparent: true; opacity: 1.0; alphaTest: 0.5; side:front;`);
+      textEntity.setAttribute('position', `0 0 ${data.textDepth}`);
+      el.appendChild(textEntity);
+
+    ////WAI ARIA Support
+
+    if(data.labelFor){
+      // el.setAttribute('role', 'button');
+    }
+
+
+  },
+  update: function (oldData) {
+    // console.log("In label update, toggle");
+   this.init();
+  },
+  tick() {
+    if (this.data.text !== this.oldText) {
+      // console.log('text was changed, about to draw text: ' + this.data.text);
+      this.oldText = this.data.text;
+     //  drawText(this.ctx, this.canvas, this.data.text, '100px ' + this.data.fontFamily, this.data.fontColor, 1);
+      drawText(this.ctx, this.canvas, this.data.text, this.data.fontSize, this.data.fontFamily, this.data.fontColor, 1,data.align,'middle', this.data.fontWeight);
+    }
+  },
+});
+
+AFRAME.registerPrimitive( 'a-gui-label', {
+  defaultComponents: {
+    'gui-item': { type: 'label' },
+    'gui-label': { }
+  },
+  mappings: {
+    'width': 'gui-item.width',
+    'height': 'gui-item.height',
+    'margin': 'gui-item.margin',
+    'on': 'gui-button.on',
+    'align': 'gui-label.align',
+    'value': 'gui-label.text',
+    'label-for': 'gui-label.labelFor',
+    'font-size': 'gui-label.fontSize',
+    'font-color': 'gui-label.fontColor',
+    'font-family': 'gui-label.fontFamily',
+    'font-weight': 'gui-label.fontWeight',
+    'background-color': 'gui-label.backgroundColor',
+    'opacity': 'gui-label.opacity',
+    'text-depth': 'gui-label.textDepth'
+  }
+ });
+
+},{}],14:[function(require,module,exports){
+AFRAME.registerComponent('gui-progressbar', {
+    schema: {
+        backgroundColor: {type: 'string', default: key_grey},
+        activeColor: {type: 'string', default: key_orange},
+    },
+    init: function () {
+
+        var data = this.data;
+        var el = this.el;
+        var guiItem = el.getAttribute("gui-item");
+
+        el.setAttribute('geometry', `primitive: plane; height: ${guiItem.height}; width: ${guiItem.width};`);
+        el.setAttribute('material', `shader: flat; opacity: 1;  color: ${data.backgroundColor}; side:front;`);
+
+        var progressMeter = document.createElement("a-entity");
+        progressMeter.setAttribute('geometry', `primitive: box; width: 0.04; height: ${guiItem.height}; depth: 0.02;`);
+        progressMeter.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.activeColor}`);
+        progressMeter.setAttribute('position', -guiItem.width/2 +' 0 0.01');
+        progressMeter.id = "progress_meter";
+        el.appendChild(progressMeter);
+
+        // <a-entity id="progress_meter"
+        //           geometry="primitive: box; width: 0.04; height: 0.3; depth: 0.004;"
+        //           material="shader: flat; opacity: 1; color: blue;"
+        //             position="-1.23  0 0.0">
+        // </a-entity>
+
+    },
+    update: function () {
+    },
+    tick: function () {
+    },
+    remove: function () {
+    },
+    pause: function () {
+    },
+    play: function () {
+    },
+});
+
+AFRAME.registerPrimitive( 'a-gui-progressbar', {
+    defaultComponents: {
+        'gui-item': { type: 'progressbar' },
+        'gui-progressbar': { }
+    },
+    mappings: {
+        'width': 'gui-item.width',
+        'height': 'gui-item.height',
+        'margin': 'gui-item.margin',
+        'background-color': 'gui-progressbar.backgroundColor',
+        'active-color': 'gui-progressbar.activeColor'
+    }
+});
+
+},{}],15:[function(require,module,exports){
+AFRAME.registerComponent('gui-radio', {
+    schema: {
+        on: {default: 'click'},
+        text: {type: 'string', default: 'text'},
+        active: {type: 'boolean', default: true},
+        checked: {type: 'boolean', default: false},
+        radiosizecoef: {type: 'number', default: 1},
+        fontSize: {type: 'string', default: '150px'},
+        fontFamily: {type: 'string', default: 'Arial'},
+        fontColor: {type: 'string', default: key_grey_dark},
+        borderColor: {type: 'string', default: key_white},
+        backgroundColor: {type: 'string', default: key_offwhite},
+        hoverColor: {type: 'string', default: key_grey_light},
+        activeColor: {type: 'string', default: key_orange},
+        handleColor: {type: 'string', default: key_grey},
+    },
+    init: function() {
+
+        var data = this.data;
+        var el = this.el;
+        var guiItem = el.getAttribute("gui-item");
+
+        var radioBoxWidth = 0.50
+        var radioBoxX = -guiItem.width*0.5 + guiItem.height*0.5;
+        var radioBox = document.createElement("a-cylinder");
+        radioBox.setAttribute('radius', guiItem.height*0.2*data.radiosizecoef);
+        radioBox.setAttribute('height', '0.01');
+        radioBox.setAttribute('rotation', '90 0 0');
+        radioBox.setAttribute('material', `color:${data.handleColor}; shader: flat;`);
+        radioBox.setAttribute('position', `${radioBoxX} 0 0`);
+        el.appendChild(radioBox);
+
+        var radioborder = document.createElement("a-torus");
+        radioborder.setAttribute('radius', guiItem.height*0.19*data.radiosizecoef);
+        radioborder.setAttribute('radius-tubular', '0.01');
+        radioborder.setAttribute('rotation', '90 0 0');
+        radioborder.setAttribute('material', `color:${data.borderColor}; shader: flat;`);
+        radioBox.appendChild(radioborder);
+
+        var radioCenter = document.createElement("a-cylinder");
+        radioCenter.setAttribute('radius', guiItem.height*0.18*data.radiosizecoef);
+        radioCenter.setAttribute('height', '0.02');
+        radioCenter.setAttribute('rotation', '0 0 0');
+        radioCenter.setAttribute('material', `color:${data.handleColor}; shader: flat;`);
+        radioBox.appendChild(radioCenter);
+
+//        var labelWidth = guiItem.width - radioBoxWidth;
+        var labelWidth = guiItem.width - guiItem.height;
+        var multiplier = 512; // POT conversion
+        var canvasWidth = labelWidth*multiplier;
+        var canvasHeight = guiItem.height*multiplier;
+
+        var canvasContainer = document.createElement('div');
+        canvasContainer.setAttribute('class', 'visuallyhidden');
+        document.body.appendChild(canvasContainer);
+
+        var labelCanvas = document.createElement("canvas");
+        this.labelCanvas = labelCanvas;
+        labelCanvas.className = "visuallyhidden";
+        labelCanvas.setAttribute('width', canvasWidth);
+        labelCanvas.setAttribute('height', canvasHeight);
+        labelCanvas.id = getUniqueId('canvas');
+        canvasContainer.appendChild(labelCanvas);
+        var ctxLabel = this.ctxLabel = labelCanvas.getContext('2d');
+
+        el.setAttribute('material', `shader: flat; depthTest:true;transparent: false; opacity: 1;  color: ${this.data.backgroundColor}; side:front;`);
+        el.setAttribute('geometry', `primitive: plane; height: ${guiItem.height}; width: ${guiItem.height};`);
+
+        drawText(ctxLabel, labelCanvas, data.text, data.fontSize, data.fontFamily, data.fontColor, 1,'left','middle');
+
+        var labelEntityX = guiItem.height*0.5 - guiItem.width*0.05;
+        var labelEntity = document.createElement("a-entity");
+        labelEntity.setAttribute('geometry', `primitive: plane; width: ${labelWidth}; height: ${guiItem.height/1.05};`);
+        labelEntity.setAttribute('material', `shader: flat; src: #${labelCanvas.id}; transparent: true; opacity: 1; side:front;`);
+        labelEntity.setAttribute('position', `${labelEntityX} 0 0.02`);
+        el.appendChild(labelEntity);
+
+
+        this.updateToggle(data.active);
+        el.setAttribute("checked",data.active);
+
+        el.addEventListener('mouseenter', function(evt) {
+            radioborder.removeAttribute('animation__leave');
+            radioborder.setAttribute('animation__enter', `property: material.color; from: ${data.borderColor}; to:${data.hoverColor}; dur:200;`);
+        });
+        el.addEventListener('mouseleave', function(evt) {
+            radioborder.removeAttribute('animation__enter');
+            radioborder.setAttribute('animation__leave', `property: material.color; from: ${data.hoverColor}; to:${data.borderColor}; dur:200; easing: easeOutQuad;`);
+        });
+        el.addEventListener(data.on, function (evt) {
+            // console.log('I was clicked at: ', evt.detail.intersection.point); // Commented out to use own made click event without defining detail
+            data.checked = !data.checked;
+            if (data.checked) {
+                radioCenter.removeAttribute('animation__colorOut');
+                radioCenter.removeAttribute('animation__rotationOut');
+                radioCenter.removeAttribute('animation__position1Out');
+                radioCenter.removeAttribute('animation__position2Out');
+                radioCenter.setAttribute('animation__colorIn', `property: material.color; from: ${data.handleColor}; to:${data.activeColor}; dur:500; easing:easeInOutCubic;`);
+                radioCenter.setAttribute('animation__rotationIn', `property: rotation; from: 0 0 0; to:-180 0 0; dur:500; easing:easeInOutCubic;`);
+                radioCenter.setAttribute('animation__position1In', `property: position; from: 0 0 0; to:0 0.3 0; dur:200; easing:easeInOutCubic;`);
+                radioCenter.setAttribute('animation__position2In', `property: position; from: 0 0.3 0; to:0 0 0; dur:200; easing:easeInOutCubic; delay:300;`);
+            }else{
+                radioCenter.removeAttribute('animation__colorIn');
+                radioCenter.removeAttribute('animation__rotationIn');
+                radioCenter.removeAttribute('animation__position1In');
+                radioCenter.removeAttribute('animation__position2In');
+                radioCenter.setAttribute('animation__colorOut', `property: material.color; from: ${data.activeColor}; to:${data.handleColor}; dur:500; easing:easeInOutCubic;`);
+                radioCenter.setAttribute('animation__rotationOut', `property: rotation; from: -180 0 0; to:0 0 0; dur:500; easing:easeInOutCubic;`);
+                radioCenter.setAttribute('animation__position1Out', `property: position; from: 0 0 0; to:0 0.3 0; dur:200; easing:easeInOutCubic; `);
+                radioCenter.setAttribute('animation__position2Out', `property: position; from: 0 0.3 0; to:0 0 0; dur:200; easing:easeInOutCubic; delay:300;`);
+            }
+
+            var guiInteractable = el.getAttribute("gui-interactable");
+            //console.log("guiInteractable: "+guiInteractable);
+            var clickActionFunctionName = guiInteractable.clickAction;
+            //console.log("clickActionFunctionName: "+clickActionFunctionName);
+            // find object
+            var clickActionFunction = window[clickActionFunctionName];
+            //console.log("clickActionFunction: "+clickActionFunction);
+            // is object a function?
+            if (typeof clickActionFunction === "function") clickActionFunction(evt);
+        });
+
+        ////WAI ARIA Support
+        el.setAttribute('role', 'radio');
+
+    },
+    update: function(){
+        var data = this.data;
+        this.updateToggle(data.active)
+    },
+
+
+    updateToggle: function(active){
+
+        if(active){
+
+        }else{
+        }
+
+    },
+
+
+});
+
+AFRAME.registerPrimitive( 'a-gui-radio', {
+    defaultComponents: {
+        'gui-interactable': { },
+        'gui-item': { type: 'radio' },
+        'gui-radio': { }
+    },
+    mappings: {
+        'onclick': 'gui-interactable.clickAction',
+        'onhover': 'gui-interactable.hoverAction',
+        'key-code': 'gui-interactable.keyCode',
+        'width': 'gui-item.width',
+        'height': 'gui-item.height',
+        'margin': 'gui-item.margin',
+        'on': 'gui-radio.on',
+        'value': 'gui-radio.text',
+        'active': 'gui-radio.active',
+        'checked': 'gui-radio.checked',
+        'font-color': 'gui-radio.fontColor',
+        'font-size': 'gui-radio.fontSize',
+        'font-family': 'gui-radio.fontFamily',
+        'border-color': 'gui-radio.borderColor',
+        'background-color': 'gui-radio.backgroundColor',
+        'hover-color': 'gui-radio.hoverColor',
+        'active-color': 'gui-radio.activeColor',
+        'handle-color': 'gui-radio.handleColor',
+        'radiosizecoef': 'gui-radio.radiosizecoef'
+    }
+});
+
+},{}],16:[function(require,module,exports){
+AFRAME.registerComponent('gui-slider', {
+    schema: {
+        activeColor: {type: 'string', default: key_orange},
+        backgroundColor: {type: 'string', default: key_offwhite},
+        borderColor: {type: 'string', default: key_grey},
+        handleColor: {type: 'string', default: key_white},
+        handleInnerDepth: {type: 'number', default: '0.02'},
+        handleInnerRadius: {type: 'number', default: '0.13'},
+        handleOuterDepth: {type: 'number', default: '0.04'},
+        handleOuterRadius: {type: 'number', default: '0.17'},
+        hoverColor: {type: 'string', default: key_grey_light},
+        leftRightPadding: {type: 'number', default: '0.25'},
+        percent: {type: 'number', default: '0.5'},
+        sliderBarHeight: {type: 'number', default: '0.05'},
+        sliderBarDepth: {type: 'number', default: '0.03'},
+        topBottomPadding: {type: 'number', default: '0.125'},
+    },
+    init: function() {
+
+        var data = this.data;
+        var el = this.el;
+        var guiItem = el.getAttribute("gui-item");
+        var sliderWidth = guiItem.width - data.leftRightPadding*2.0
+        var sliderHeight = guiItem.height - data.topBottomPadding*2.0
+
+        el.setAttribute('geometry', `primitive: plane; height: ${guiItem.height}; width: ${guiItem.height};`);
+        el.setAttribute('material', `shader: flat; opacity: 1;  color: ${data.backgroundColor}; side:front;`);
+
+        var sliderActiveBar = document.createElement("a-entity");
+        sliderActiveBar.setAttribute('geometry', `primitive: box; width: ${data.percent*sliderWidth}; height: ${data.sliderBarHeight}; depth: ${data.sliderBarDepth};`);
+        sliderActiveBar.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.activeColor};`);
+        sliderActiveBar.setAttribute('position', `${data.percent - sliderWidth*0.5} 0 ${data.sliderBarDepth - 0.01}`);
+        el.appendChild(sliderActiveBar);
+
+        var sliderBar = document.createElement("a-entity");
+        sliderBar.setAttribute('geometry', `primitive: box; width: ${sliderWidth - data.percent * sliderWidth}; height: ${data.sliderBarHeight}; depth: ${data.sliderBarDepth};`);
+        sliderBar.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor};`);
+        sliderBar.setAttribute('position', `${data.percent * sliderWidth * 0.5} 0 ${data.sliderBarDepth - 0.01}`);
+        el.appendChild(sliderBar);
+
+        var handleContainer = document.createElement("a-entity");
+        handleContainer.setAttribute('geometry', `primitive: cylinder; radius: ${data.handleOuterRadius}; height: ${data.handleOuterDepth};`);
+        handleContainer.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.borderColor};`);
+        handleContainer.setAttribute('rotation', '90 0 0');
+        handleContainer.setAttribute('position', `${data.percent*sliderWidth - sliderWidth*0.5} 0 ${data.handleOuterDepth - 0.01}`);
+        el.appendChild(handleContainer);
+
+        var handle = document.createElement("a-entity");
+        handle.setAttribute('geometry', `primitive: cylinder; radius: ${data.handleInnerRadius}; height: ${data.handleInnerDepth};`);
+        handle.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.handleColor};`);
+        handle.setAttribute('position', `0 ${data.handleInnerDepth} 0`);
+        handleContainer.appendChild(handle);
+
+        el.addEventListener('mouseenter', function () {
+            handle.setAttribute('material', 'color', data.hoverColor);
+        });
+
+        el.addEventListener('mouseleave', function () {
+            handle.setAttribute('material', 'color', data.handleColor);
+        });
+
+        el.addEventListener('click', function (evt) {
+            console.log('I was clicked at: ', evt.detail.intersection.point);
+            var localCoordinates = el.object3D.worldToLocal(evt.detail.intersection.point);
+            console.log('local coordinates: ', localCoordinates);
+            console.log('current percent: '+data.percent);
+            var sliderBarWidth = 2; // total width of slider bar
+            if (localCoordinates.x <= (-sliderBarWidth / 2)) {
+                data.percent = 0;
+            } else if (localCoordinates.x >= (sliderBarWidth / 2)) {
+                data.percent = 1.0;
+            } else {
+                data.percent = (localCoordinates.x + (sliderBarWidth /2)) / sliderBarWidth;
+            }
+            console.log("handle container: "+handleContainer);
+            sliderActiveBar.setAttribute('geometry', `primitive: box; width: ${data.percent*2}; height: 0.05; depth: 0.03;`);
+            sliderActiveBar.setAttribute('position', `${data.percent-1} 0 0.02`);
+            sliderBar.setAttribute('geometry', `primitive: box; width: ${2-data.percent*2}; height: 0.05; depth: 0.03;`);
+            sliderBar.setAttribute('position', `${data.percent*1} 0 0.02`);
+            handleContainer.setAttribute('position', `${data.percent*2-1} 0 0.03`);
+            var guiInteractable = el.getAttribute("gui-interactable");
+            console.log("guiInteractable: "+guiInteractable);
+            var clickActionFunctionName = guiInteractable.clickAction;
+            console.log("clickActionFunctionName: "+clickActionFunctionName);
+            // find object
+            var clickActionFunction = window[clickActionFunctionName];
+            //console.log("clickActionFunction: "+clickActionFunction);
+            // is object a function?
+            if (typeof clickActionFunction === "function") clickActionFunction(evt, data.percent);
+        });
+
+
+    },
+    update: function () {
+    },
+    tick: function () {
+    },
+    remove: function () {
+    },
+    pause: function () {
+    },
+    play: function () {
+    },
+});
+
+AFRAME.registerPrimitive( 'a-gui-slider', {
+    defaultComponents: {
+        'gui-interactable': { },
+        'gui-item': { type: 'slider' },
+        'gui-slider': { }
+    },
+    mappings: {
+        'active-color': 'gui-slider.activeColor',
+        'background-color': 'gui-slider.backgroundColor',
+        'border-color': 'gui-slider.borderColor',
+        'handle-color': 'gui-slider.handleColor',
+        'handle-inner-depth': 'gui-slider.handleInnerDepth',
+        'handle-inner-radius': 'gui-slider.handleInnerRadius',
+        'handle-outer-depth': 'gui-slider.handleOuterDepth',
+        'handle-outer-radius': 'gui-slider.handleOuterRadius',
+        'height': 'gui-item.height',
+        'hover-color': 'gui-slider.hoverColor',
+        'key-code': 'gui-interactable.keyCode',
+        'left-right-padding': 'gui-slider.leftRightPadding',
+        'margin': 'gui-item.margin',
+        'onclick': 'gui-interactable.clickAction',
+        'onhover': 'gui-interactable.hoverAction',
+        'percent': 'gui-slider.percent',
+        'slider-bar-depth': 'gui-slider.sliderBarDepth',
+        'slider-bar-height': 'gui-slider.sliderBarHeight',
+        'top-bottom-padding': 'gui-slider.topBottomPadding',
+        'width': 'gui-item.width',
+    }
+});
+
+},{}],17:[function(require,module,exports){
+AFRAME.registerComponent('gui-toggle', {
+    schema: {
+        on: {default: 'click'},
+        text: {type: 'string', default: 'text'},
+        active: {type: 'boolean', default: true},
+        checked: {type: 'boolean', default: false},
+        borderWidth: {type: 'number', default: 1},
+        fontSize: {type: 'string', default: '150px'},
+        fontFamily: {type: 'string', default: 'Arial'},
+        fontColor: {type: 'string', default: key_grey_dark},
+        borderColor: {type: 'string', default: key_grey},
+        backgroundColor: {type: 'string', default: key_offwhite},
+        hoverColor: {type: 'string', default: key_grey_light},
+        activeColor: {type: 'string', default: key_orange},
+        handleColor: {type: 'string', default: key_offwhite},
+    },
+    init: function() {
+
+        var data = this.data;
+        var el = this.el;
+        var guiItem = el.getAttribute("gui-item");
+
+        var toggleBoxWidth = guiItem.height/1.75;
+        var toggleBoxX = -guiItem.width*0.5 + guiItem.height/2;
+        var toggleBox = document.createElement("a-box");
+
+        toggleBox.setAttribute('width', toggleBoxWidth);
+        toggleBox.setAttribute('height', guiItem.height*0.5);
+        toggleBox.setAttribute('depth', '0.01');
+        toggleBox.setAttribute('material', `color:${data.borderColor}; shader: flat;`);
+        toggleBox.setAttribute('position', `${toggleBoxX} 0 0`);
+        el.appendChild(toggleBox);
+
+        var toggleHandleWidth = guiItem.height/5;
+        var toggleHandleXStart = -guiItem.height*0.5 + toggleHandleWidth*2;
+        var toggleHandleXEnd = guiItem.height*0.5 - toggleHandleWidth*2;
+        var toggleHandle = document.createElement("a-box");
+
+        toggleHandle.setAttribute('width', `${toggleHandleWidth}`);
+        toggleHandle.setAttribute('height', guiItem.height*0.4);
+        toggleHandle.setAttribute('depth', '0.02');
+        toggleHandle.setAttribute('material', `color:${data.handleColor}`);
+        toggleHandle.setAttribute('position', `${toggleHandleXStart} 0 0.02`);
+        toggleBox.appendChild(toggleHandle);
+
+        var labelWidth = guiItem.width - guiItem.height;
+        var multiplier = 512; // POT conversion
+        var canvasWidth = labelWidth*multiplier;
+        var canvasHeight = guiItem.height*multiplier;
+
+        var canvasContainer = document.createElement('div');
+        canvasContainer.setAttribute('class', 'visuallyhidden');
+        document.body.appendChild(canvasContainer);
+
+        var labelCanvas = document.createElement("canvas");
+        this.labelCanvas = labelCanvas;
+        labelCanvas.className = "visuallyhidden";
+        labelCanvas.setAttribute('width', canvasWidth);
+        labelCanvas.setAttribute('height', canvasHeight);
+        labelCanvas.id = getUniqueId('canvas');
+        canvasContainer.appendChild(labelCanvas);
+        var ctxLabel = this.ctxLabel = labelCanvas.getContext('2d');
+
+        el.setAttribute('material', `shader: flat; depthTest:true;transparent: false; opacity: 1;  color: ${this.data.backgroundColor}; side:front;`);
+        el.setAttribute('geometry', `primitive: plane; height: ${guiItem.height}; width: ${guiItem.height};`);
+
+        drawText(ctxLabel, labelCanvas, data.text, data.fontSize, data.fontFamily, data.fontColor, 1,'left','middle');
+
+        var labelEntityX = guiItem.height*0.5 - guiItem.width*0.05;
+        var labelEntity = document.createElement("a-entity");
+        labelEntity.setAttribute('geometry', `primitive: plane; width: ${labelWidth}; height: ${guiItem.height/1.05};`);
+        labelEntity.setAttribute('material', `shader: flat; src: #${labelCanvas.id}; transparent: true; opacity: 1; side:front;`);
+        labelEntity.setAttribute('position', `${labelEntityX} 0 0.02`);
+        el.appendChild(labelEntity);
+
+        this.updateToggle(data.active);
+
+
+        el.addEventListener('mouseenter', function(evt) {
+            toggleHandle.removeAttribute('animation__leave');
+            toggleHandle.setAttribute('animation__enter', `property: material.color; from: ${data.handleColor}; to:${data.hoverColor}; dur:200;`);
+        });
+        el.addEventListener('mouseleave', function(evt) {
+            toggleHandle.removeAttribute('animation__enter');
+            toggleHandle.setAttribute('animation__leave', `property: material.color; from: ${data.hoverColor}; to:${data.handleColor}; dur:200; easing: easeOutQuad;`);
+        });
+
+        el.addEventListener("check", function (evt) {
+            if(!data.checked){
+                data.checked = true;
+            }
+        });
+        el.addEventListener("uncheck", function (evt) { // a
+              if(data.checked){
+                data.checked = false;
+              }
+        });
+
+        el.addEventListener(data.on, function (evt) {
+            console.log('I was clicked at: ', evt.detail.intersection.point);
+            data.checked = !data.checked;
+            if(data.checked){
+                toggleBox.removeAttribute('animation__colorOut');
+                toggleHandle.removeAttribute('animation__positionOut');
+                toggleBox.setAttribute('animation__colorIn', `property: material.color; from: ${data.borderColor}; to:${data.activeColor}; dur:200; easing:easeInOutCubic;`);
+                toggleHandle.setAttribute('animation__positionIn', `property: position; from: ${toggleHandleXStart} 0 0.02; to:${toggleHandleXEnd} 0 0.02; dur:200; easing:easeInOutCubic;`);
+            }else{
+                toggleBox.removeAttribute('animation__colorIn');
+                toggleHandle.removeAttribute('animation__positionIn');
+                toggleBox.setAttribute('animation__colorOut', `property: material.color; from: ${data.activeColor}; to:${data.borderColor}; dur:200; easing:easeInOutCubic;`);
+                toggleHandle.setAttribute('animation__positionOut', `property: position; from: ${toggleHandleXEnd} 0 0.02; to:${toggleHandleXStart} 0 0.02; dur:200; easing:easeInOutCubic;`);
+            }
+            var guiInteractable = el.getAttribute("gui-interactable");
+            console.log("guiInteractable: "+guiInteractable);
+            var clickActionFunctionName = guiInteractable.clickAction;
+            console.log("clickActionFunctionName: "+clickActionFunctionName);
+            // find object
+            var clickActionFunction = window[clickActionFunctionName];
+            //console.log("clickActionFunction: "+clickActionFunction);
+            // is object a function?
+            if (typeof clickActionFunction === "function") clickActionFunction(evt);
+});
+
+    },
+    update: function(){
+        var data = this.data;
+        this.updateToggle(data.active)
+    },
+
+
+    updateToggle: function(active){
+
+        if(active){
+
+        }else{
+        }
+
+    },
+});
+
+AFRAME.registerPrimitive( 'a-gui-toggle', {
+    defaultComponents: {
+        'gui-interactable': { },
+        'gui-item': { type: 'toggle' },
+        'gui-toggle': { }
+    },
+    mappings: {
+        'onclick': 'gui-interactable.clickAction',
+        'onhover': 'gui-interactable.hoverAction',
+        'key-code': 'gui-interactable.keyCode',
+        'width': 'gui-item.width',
+        'height': 'gui-item.height',
+        'margin': 'gui-item.margin',
+        'on': 'gui-toggle.on',
+        'active': 'gui-toggle.active',
+        'checked': 'gui-toggle.checked',
+        'value': 'gui-toggle.text',
+        'font-color': 'gui-toggle.fontColor',
+        'font-family': 'gui-toggle.fontFamily',
+        'font-size': 'gui-toggle.fontSize',
+        'border-width': 'gui-toggle.borderWidth',
+        'border-color': 'gui-toggle.borderColor',
+        'background-color': 'gui-toggle.backgroundColor',
+        'hover-color': 'gui-toggle.hoverColor',
+        'active-color': 'gui-toggle.activeColor',
+        'handle-color': 'gui-toggle.handleColor'
+    }
+});
+
+},{}],18:[function(require,module,exports){
+AFRAME.registerComponent('gui-vertical-slider', {
+    schema: {
+        activeColor: {type: 'string', default: key_orange},
+        backgroundColor: {type: 'string', default: key_offwhite},
+        borderColor: {type: 'string', default: key_grey},
+        handleColor: {type: 'string', default: key_white},
+        handleInnerDepth: {type: 'number', default: 0.02},
+        handleInnerRadius: {type: 'number', default: 0.13},
+        handleOuterDepth: {type: 'number', default: 0.04},
+        handleOuterRadius: {type: 'number', default: 0.17},
+        hoverColor: {type: 'string', default: key_grey_light},
+        hoverFontSize: {type: 'number', default: 100.0 },
+        hoverHeight: {type: 'number', default: 0.35},
+        hoverPercent: {type: 'number'},
+        hoverWidth: {type: 'number', default: 0.7},
+        hoverMargin: {type: 'vec4', default: {x: 0, y: 0, z: 0, w: 0}},
+        leftRightPadding: {type: 'number', default: 0.125},
+        percent: {type: 'number', default: 0.5},
+        opacity: { type: 'number', default: 1.0 },
+        outputFontSize: {type: 'string', default: '180px'},
+        outputFunction: {type: 'string'},
+        outputHeight: {type: 'number', default: 1.0},
+        outputMargin: {type: 'vec4', default: {x: 0, y: 0, z: 0, w: 0}},
+        outputTextDepth: {type: 'number', default: 0.25},
+        outputWidth: {type: 'number', default: 1.0},
+        sliderBarDepth: {type: 'number', default: 0.03},
+        sliderBarWidth: {type: 'number', default: 0.08},
+        topBottomPadding: {type: 'number', default: 0.25},
+    },
+    init: function() {
+        var data = this.data;
+        var el = this.el;
+        var guiItem = el.getAttribute('gui-item');
+        var sliderWidth = guiItem.width - data.leftRightPadding*2.0
+        var sliderHeight = guiItem.height - data.topBottomPadding*2.0
+        this.sliderHeight = sliderHeight;
+
+        el.setAttribute('geometry', `primitive: plane; height: ${guiItem.height}; width: ${guiItem.width};`);
+        el.setAttribute('material', `shader: flat; opacity: ${data.opacity};  alphaTest: 0.5; color: ${data.backgroundColor}; side:front;`);
+
+        console.log('**** in vertical slider init, percent: ' + data.percent + ', sliderHeight: ' + sliderHeight);
+        var sliderActiveBar = document.createElement("a-entity");
+        sliderActiveBar.setAttribute('geometry', `primitive: box; height: ${data.percent*sliderHeight}; width: ${data.sliderBarWidth}; depth: ${data.sliderBarDepth};`);
+        sliderActiveBar.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.activeColor};`);
+        sliderActiveBar.setAttribute('position', `0 ${data.percent*sliderHeight - sliderHeight*0.5 - data.percent *sliderHeight * 0.5} ${data.sliderBarDepth - 0.01}`);
+        this.sliderActiveBar = sliderActiveBar;
+        el.appendChild(sliderActiveBar);
+
+        var sliderBar = document.createElement("a-entity");
+        sliderBar.setAttribute('geometry', `primitive: box; height: ${sliderHeight - data.percent * sliderHeight}; width: ${data.sliderBarWidth}; depth: ${data.sliderBarDepth};`);
+        sliderBar.setAttribute('material', `shader: flat; opacity: 1; alphaTest: 0.5; side:double; color:${data.borderColor};`);
+        sliderBar.setAttribute('position', `0 ${data.percent * sliderHeight * 0.5} ${data.sliderBarDepth - 0.01}`);
+        this.sliderBar = sliderBar;
+        el.appendChild(sliderBar);
+
+        var handleContainer = document.createElement("a-entity");
+        handleContainer.setAttribute('geometry', `primitive: cylinder; radius: ${data.handleOuterRadius}; height: ${data.handleOuterDepth};`);
+        handleContainer.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.activeColor};`);
+        handleContainer.setAttribute('rotation', '90 0 0');
+        handleContainer.setAttribute('position', `0 ${data.percent*sliderHeight - sliderHeight*0.5} ${data.handleOuterDepth - 0.01}`);
+        this.handleContainer = handleContainer;
+        el.appendChild(handleContainer);
+
+        var handle = document.createElement("a-entity");
+        handle.setAttribute('geometry', `primitive: cylinder; radius: ${data.handleInnerRadius}; height: ${data.handleInnerDepth};`);
+        handle.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.handleColor};`);
+        handle.setAttribute('position', `0 ${data.handleInnerDepth} 0`);
+        handleContainer.appendChild(handle);
+
+        var valueLabel = document.createElement('a-gui-label');
+        valueLabel.setAttribute('width', `${guiItem.width * 1.4 * data.outputWidth}`);
+        valueLabel.setAttribute('height', `${guiItem.width * 0.7}`);
+        // TODO: use function to calculate display value
+        valueLabel.setAttribute('value', '');
+        valueLabel.setAttribute('opacity', '1.0');
+        valueLabel.setAttribute('position', `${guiItem.width * 1.4} 0 ${data.sliderBarDepth}`);
+        valueLabel.setAttribute('rotation', '-90 0 0');
+        valueLabel.setAttribute('font-color', data.activeColor);
+        valueLabel.setAttribute('font-size', `${guiItem.width * 240}px`);
+        valueLabel.setAttribute('font-weight', 'bold');
+        valueLabel.setAttribute('text-depth', data.outputTextDepth);
+        this.valueLabel = valueLabel;
+        handleContainer.appendChild(valueLabel);
+
+        var hoverIndicator = document.createElement("a-entity");
+        hoverIndicator.setAttribute('geometry', `primitive: box; height: 0.02; width: ${guiItem.width * 0.5}; depth: ${data.sliderBarDepth};`);
+        hoverIndicator.setAttribute('material', `shader: flat; opacity: 1; side:double; color: ${data.activeColor};`);
+        hoverIndicator.setAttribute('position', `${-guiItem.width * 0.5} 0 ${data.sliderBarDepth - 0.01}`);
+        hoverIndicator.setAttribute('visible', 'false');
+        this.hoverIndicator = hoverIndicator;
+        el.appendChild(hoverIndicator);
+
+        var hoverLabel = document.createElement('a-gui-label');
+        hoverLabel.setAttribute('width', `${guiItem.width * data.hoverWidth}`);
+        hoverLabel.setAttribute('height', `${guiItem.width * data.hoverHeight}`);
+        hoverLabel.setAttribute('value', '');
+        hoverLabel.setAttribute('opacity', '0.5');
+        hoverLabel.setAttribute('position', `${-guiItem.width * data.hoverWidth} 0 ${data.sliderBarDepth}`);
+        hoverLabel.setAttribute('font-color', data.borderColor);
+        hoverLabel.setAttribute('font-size', `${guiItem.width * data.hoverFontSize}px`);
+        hoverLabel.setAttribute('text-depth', data.outputTextDepth);
+        this.hoverLabel = hoverLabel;
+        hoverIndicator.appendChild(hoverLabel);
+
+        el.addEventListener('mouseenter', function () {
+            handle.setAttribute('material', 'color', data.hoverColor);
+        });
+
+        el.addEventListener('mouseleave', function () {
+            handle.setAttribute('material', 'color', data.handleColor);
+        });
+
+        el.addEventListener('click', function (evt) {
+           // console.log('I was clicked at: ', evt.detail.intersection.point);
+            var localCoordinates = el.object3D.worldToLocal(evt.detail.intersection.point);
+            console.log('click local coordinates: ', localCoordinates);
+            console.log('current percent: '+data.percent);
+            var newPercent = null;
+            if (localCoordinates.y <= (-sliderHeight / 2)) {
+                newPercent = 0;
+            } else if (localCoordinates.y >= (sliderHeight / 2)) {
+                newPercent = 1.0;
+            } else {
+                newPercent = (localCoordinates.y + (sliderHeight /2)) / sliderHeight;
+            }
+            console.log('new percent: '+newPercent);
+            el.setAttribute('gui-vertical-slider', 'percent', String(newPercent));
+            el.setAttribute('gui-vertical-slider', 'hoverPercent', String(newPercent));
+            console.log("handle container: "+handleContainer);
+            var guiInteractable = el.getAttribute("gui-interactable");
+            console.log("guiInteractable: "+guiInteractable);
+            var clickActionFunctionName = guiInteractable.clickAction;
+            console.log("clickActionFunctionName: "+clickActionFunctionName);
+            // find object
+            var clickActionFunction = window[clickActionFunctionName];
+            //console.log("clickActionFunction: "+clickActionFunction);
+            // is object a function?
+            if (typeof clickActionFunction === "function") clickActionFunction(data.percent);
+        });
+
+        this.el.addEventListener('raycaster-intersected', evt => {
+           // console.log('***** in raycaster-intersected');
+            this.raycaster = evt.detail.el;
+        });
+        this.el.addEventListener('raycaster-intersected-cleared', evt => {
+           // console.log('****** in raycaster-intersected-cleared');
+            this.raycaster = null;
+            this.hoverIndicator.setAttribute('visible', false);
+            this.hoverLabel.setAttribute('visible', false);
+        });
+
+
+    },
+    update: function (oldData) {
+        var data = this.data;
+        var el = this.el;
+        var guiItem = el.getAttribute('gui-item');
+        var sliderWidth = guiItem.width - data.leftRightPadding*2.0
+        var sliderHeight = guiItem.height - data.topBottomPadding*2.0
+        //console.log('in vertical slider update, oldData: ' + JSON.stringify(oldData) + ', data: ' + JSON.stringify(data))
+        if (data.percent != oldData.percent && this.sliderActiveBar && this.sliderBar && this.handleContainer) {
+            var sliderHeight = guiItem.height - data.topBottomPadding*2.0;
+            this.sliderActiveBar.setAttribute('geometry', `primitive: box; height: ${data.percent*sliderHeight}; width: ${data.sliderBarWidth}; depth: ${data.sliderBarDepth};`);
+            this.sliderActiveBar.setAttribute('position', `0 ${data.percent*sliderHeight - sliderHeight*0.5 - data.percent *sliderHeight * 0.5} ${data.sliderBarDepth - 0.01}`);
+            this.sliderBar.setAttribute('geometry', `primitive: box; width: ${data.sliderBarWidth}; height: ${sliderHeight - data.percent * sliderHeight}; depth: ${data.sliderBarDepth};`);
+            this.sliderBar.setAttribute('position', `0 ${data.percent * sliderHeight * 0.5} ${data.sliderBarDepth - 0.01}`);
+            this.handleContainer.setAttribute('position', `0 ${data.percent*sliderHeight - sliderHeight*0.5} ${data.handleOuterDepth - 0.01}`);
+            var outputValue = this.getOutputValue(false);
+            if (outputValue) {
+                this.valueLabel.setAttribute('value', outputValue);
+            }
+            this.hoverIndicator.setAttribute('visible', false);
+            this.hoverLabel.setAttribute('visible', false);
+        } else if (data.hoverPercent != oldData.hoverPercent && data.hoverPercent != data.percent && this.hoverIndicator) {
+            var hoverOutputValue = this.getOutputValue(true);
+            if (hoverOutputValue) {
+                this.hoverLabel.setAttribute('value', hoverOutputValue);
+            }
+            this.hoverIndicator.setAttribute('position', `0 ${data.hoverPercent*sliderHeight - sliderHeight*0.5} ${data.sliderBarDepth - 0.01}`)
+            this.hoverIndicator.setAttribute('visible', true);
+            this.hoverLabel.setAttribute('visible', true);
+        }
+    },
+    tick: function () {
+        if (!this.raycaster) { return; }  // Not intersecting.
+
+        var el = this.el;
+        var data = this.data;
+        var sliderHeight = this.sliderHeight;
+        var handleContainer = this.handleContainer;
+        let intersection = this.raycaster.components.raycaster.getIntersection(el);
+        if (!intersection) {
+            return;
+        } else {
+         //  console.log('1: hover intersection point: ' + JSON.stringify(intersection.point));
+           if (this.previousLocalY && this.previousLocalY == intersection.point.y) {
+               this.hoverIndicator.setAttribute('visible', false);
+               this.hoverLabel.setAttribute('visible', false);
+               return;
+           }
+            var mesh = this.el.object3D;
+            mesh.updateMatrixWorld();
+
+            var pos = new THREE.Vector3();
+            var rot = new THREE.Quaternion();
+            var scale = new THREE.Vector3();
+
+            mesh.matrixWorld.decompose(pos, rot, scale);
+
+          // console.log('2: hover world position: ' + JSON.stringify(pos));
+            var localCoordinates = new THREE.Vector3();
+            localCoordinates.x = intersection.point.x - pos.x;
+            localCoordinates.y = intersection.point.y - pos.y;
+            localCoordinates.z = intersection.point.z - pos.z;
+            this.previousLocalY = localCoordinates.y;
+        //    console.log('3: hover local position: ' + JSON.stringify(localCoordinates));
+            // var localCoordinates = el.object3D.worldToLocal(intersection.point);
+              //console.log('local coordinates: ', localCoordinates);
+              //console.log('current percent: '+data.percent);
+              var hoverPercent = null;
+              if (localCoordinates.y <= (-sliderHeight / 2)) {
+                  hoverPercent = 0;
+              } else if (localCoordinates.y >= (sliderHeight / 2)) {
+                  hoverPercent = 1.0;
+              } else {
+                  hoverPercent = (localCoordinates.y + (sliderHeight /2)) / sliderHeight;
+              }
+              //console.log('hoverPercent: '+hoverPercent);
+              if (hoverPercent != this.data.hoverPercent) {
+                  //console.log('**** hoverPercent changed: ' + hoverPercent);
+                  el.setAttribute('gui-vertical-slider', 'hoverPercent', String(hoverPercent));
+              }
+              // el.setAttribute('gui-vertical-slider', 'percent', String(newPercent));
+              //console.log("handle container: "+handleContainer);
+              var guiInteractable = el.getAttribute("gui-interactable");
+              //console.log("guiInteractable: "+guiInteractable);
+              var hoverActionFunctionName = guiInteractable.hoverAction;
+              //console.log("hoverActionFunctionName: "+hoverActionFunctionName);
+              // find object
+              var hoverActionFunction = window[hoverActionFunctionName];
+              //console.log("clickActionFunction: "+clickActionFunction);
+              // is object a function?
+              if (typeof hoverActionFunction === "function") hoverActionFunction(hoverPercent);
+
+        }
+    },
+    remove: function () {
+    },
+    pause: function () {
+    },
+    play: function () {
+    },
+    getOutputValue: function (hover) {
+        var outputValueFunction = window[this.data.outputFunction];
+        //console.log("clickActionFunction: "+clickActionFunction);
+        // is object a function?
+        if (typeof outputValueFunction === "function") {
+            var outputValue = outputValueFunction(hover ? this.data.hoverPercent : this.data.percent);
+            return outputValue
+        }
+        return null;
+    },
+});
+
+AFRAME.registerPrimitive( 'a-gui-vertical-slider', {
+    defaultComponents: {
+        'gui-interactable': { },
+        'gui-item': { type: 'slider' },
+        'gui-vertical-slider': { }
+    },
+    mappings: {
+        'active-color': 'gui-vertical-slider.activeColor',
+        'background-color': 'gui-vertical-slider.backgroundColor',
+        'border-color': 'gui-vertical-slider.borderColor',
+        'handle-color': 'gui-vertical-slider.handleColor',
+        'handle-inner-depth': 'gui-vertical-slider.handleInnerDepth',
+        'handle-inner-radius': 'gui-vertical-slider.handleInnerRadius',
+        'handle-outer-depth': 'gui-vertical-slider.handleOuterDepth',
+        'handle-outer-radius': 'gui-vertical-slider.handleOuterRadius',
+        'height': 'gui-item.height',
+        'hover-color': 'gui-vertical-slider.hoverColor',
+        'hover-font-size': 'gui-vertical-slider.hoverFontSize',
+        'hover-height': 'gui-vertical-slider.hoverHeight',
+        'hover-margin': 'gui-vertical-slider.hoverMargin',
+        'hover-percent': 'gui-vertical-slider.hoverPercent',
+        'hover-width': 'gui-vertical-slider.hoverWidth',
+       'key-code': 'gui-interactable.keyCode',
+        'left-right-padding': 'gui-vertical-slider.leftRightPadding',
+        'margin': 'gui-item.margin',
+        'onclick': 'gui-interactable.clickAction',
+        'onhover': 'gui-interactable.hoverAction',
+        'opacity': 'gui-vertical-slider.opacity',
+        'output-font-size': 'gui-vertical-slider.outputFontSize',
+        'output-function': 'gui-vertical-slider.outputFunction',
+        'output-height': 'gui-vertical-slider.outputHeight',
+        'output-margin': 'gui-vertical-slider.outputMargin',
+        'output-text-depth': 'gui-vertical-slider.outputTextDepth',
+        'output-width': 'gui-vertical-slider.outputWidth',
+        'percent': 'gui-vertical-slider.percent',
+        'slider-bar-depth': 'gui-vertical-slider.sliderBarDepth',
+        'slider-bar-width': 'gui-vertical-slider.sliderBarWidth',
+        'top-bottom-padding': 'gui-vertical-slider.topBottomPadding',
+        'width': 'gui-item.width',
+    }
+});
+
+},{}],19:[function(require,module,exports){
+if (typeof AFRAME === 'undefined') {
+    throw new Error('Component attempted to register before AFRAME was available.');
+}
+
+// Components
+require('./scripts/vars.js');
+require('./components/item.js');
+require('./components/interactable.js');
+require('./components/flex-container.js');
+require('./components/label.js');
+require('./components/button.js');
+require('./components/icon-button.js');
+require('./components/icon-label-button.js');
+require('./components/toggle.js');
+require('./components/radio.js');
+require('./components/circle-loader.js');
+require('./components/progress-bar.js');
+require('./components/circle-timer.js');
+require('./components/slider.js');
+require('./components/vertical-slider.js');
+require('./components/input.js');
+require('./components/cursor.js');
+require('./scripts/reset-cursor.js');
+
+},{"./components/button.js":3,"./components/circle-loader.js":4,"./components/circle-timer.js":5,"./components/cursor.js":6,"./components/flex-container.js":7,"./components/icon-button.js":8,"./components/icon-label-button.js":9,"./components/input.js":10,"./components/interactable.js":11,"./components/item.js":12,"./components/label.js":13,"./components/progress-bar.js":14,"./components/radio.js":15,"./components/slider.js":16,"./components/toggle.js":17,"./components/vertical-slider.js":18,"./scripts/reset-cursor.js":20,"./scripts/vars.js":21}],20:[function(require,module,exports){
+
+// Reset cursor
+var cursor = document.querySelector("#cursor");
+if (cursor) {
+    cursor.addEventListener("stateremoved", function (evt) {
+        if (evt.detail.state === 'cursor-fusing') {
+            AFRAME.utils.entity.setComponentProperty(this, "geometry.thetaLength", 360);
+            AFRAME.utils.entity.setComponentProperty(this, "material.color", key_white);
+            AFRAME.utils.entity.setComponentProperty(this, "scale", "1 1 1");
+        }
+    });
+}
+},{}],21:[function(require,module,exports){
+window.normalYPosition = 1.5;
+window.hiddenYPosition = 1000;
+
+//default colors
+window.key_orange       = '#ed5b21' // rgb(237, 91, 33) Light orange
+window.key_orange_light = '#ef8c60' // rgb (239, 140, 96) Extra Light Orange
+window.key_grey         = '#22252a' // rgb(34, 37, 42) Standard grey
+window.key_grey_dark    = '#2c3037' // rgb(44, 48, 55) Medium grey
+window.key_grey_light   = '#606876' // rgb(96, 104, 118) Light grey
+window.key_offwhite     = '#d3d3d4' // rgb(211, 211, 212) Extra Light grey
+window.key_white        = '#fff'
+
+//icon font variables
+window.icon_font = {"alert": "\uf101", "alert-circled": "\uf100", "android-add": "\uf2c7", "android-add-circle": "\uf359", "android-alarm-clock": "\uf35a", "android-alert": "\uf35b", "android-apps": "\uf35c", "android-archive": "\uf2c9", "android-arrow-back": "\uf2ca", "android-arrow-down": "\uf35d", "android-arrow-dropdown": "\uf35f", "android-arrow-dropdown-circle": "\uf35e", "android-arrow-dropleft": "\uf361", "android-arrow-dropleft-circle": "\uf360", "android-arrow-dropright": "\uf363", "android-arrow-dropright-circle": "\uf362", "android-arrow-dropup": "\uf365", "android-arrow-dropup-circle": "\uf364", "android-arrow-forward": "\uf30f", "android-arrow-up": "\uf366", "android-attach": "\uf367", "android-bar": "\uf368", "android-bicycle": "\uf369", "android-boat": "\uf36a", "android-bookmark": "\uf36b", "android-bulb": "\uf36c", "android-bus": "\uf36d", "android-calendar": "\uf2d1", "android-call": "\uf2d2", "android-camera": "\uf2d3", "android-cancel": "\uf36e", "android-car": "\uf36f", "android-cart": "\uf370", "android-chat": "\uf2d4", "android-checkbox": "\uf374", "android-checkbox-blank": "\uf371", "android-checkbox-outline": "\uf373", "android-checkbox-outline-blank": "\uf372", "android-checkmark-circle": "\uf375", "android-clipboard": "\uf376", "android-close": "\uf2d7", "android-cloud": "\uf37a", "android-cloud-circle": "\uf377", "android-cloud-done": "\uf378", "android-cloud-outline": "\uf379", "android-color-palette": "\uf37b", "android-compass": "\uf37c", "android-contact": "\uf2d8", "android-contacts": "\uf2d9", "android-contract": "\uf37d", "android-create": "\uf37e", "android-delete": "\uf37f", "android-desktop": "\uf380", "android-document": "\uf381", "android-done": "\uf383", "android-done-all": "\uf382", "android-download": "\uf2dd", "android-drafts": "\uf384", "android-exit": "\uf385", "android-expand": "\uf386", "android-favorite": "\uf388", "android-favorite-outline": "\uf387", "android-film": "\uf389", "android-folder": "\uf2e0", "android-folder-open": "\uf38a", "android-funnel": "\uf38b", "android-globe": "\uf38c", "android-hand": "\uf2e3", "android-hangout": "\uf38d", "android-happy": "\uf38e", "android-home": "\uf38f", "android-image": "\uf2e4", "android-laptop": "\uf390", "android-list": "\uf391", "android-locate": "\uf2e9", "android-lock": "\uf392", "android-mail": "\uf2eb", "android-map": "\uf393", "android-menu": "\uf394", "android-microphone": "\uf2ec", "android-microphone-off": "\uf395", "android-more-horizontal": "\uf396", "android-more-vertical": "\uf397", "android-navigate": "\uf398", "android-notifications": "\uf39b", "android-notifications-none": "\uf399", "android-notifications-off": "\uf39a", "android-open": "\uf39c", "android-options": "\uf39d", "android-people": "\uf39e", "android-person": "\uf3a0", "android-person-add": "\uf39f", "android-phone-landscape": "\uf3a1", "android-phone-portrait": "\uf3a2", "android-pin": "\uf3a3", "android-plane": "\uf3a4", "android-playstore": "\uf2f0", "android-print": "\uf3a5", "android-radio-button-off": "\uf3a6", "android-radio-button-on": "\uf3a7", "android-refresh": "\uf3a8", "android-remove": "\uf2f4", "android-remove-circle": "\uf3a9", "android-restaurant": "\uf3aa", "android-sad": "\uf3ab", "android-search": "\uf2f5", "android-send": "\uf2f6", "android-settings": "\uf2f7", "android-share": "\uf2f8", "android-share-alt": "\uf3ac", "android-star": "\uf2fc", "android-star-half": "\uf3ad", "android-star-outline": "\uf3ae", "android-stopwatch": "\uf2fd", "android-subway": "\uf3af", "android-sunny": "\uf3b0", "android-sync": "\uf3b1", "android-textsms": "\uf3b2", "android-time": "\uf3b3", "android-train": "\uf3b4", "android-unlock": "\uf3b5", "android-upload": "\uf3b6", "android-volume-down": "\uf3b7", "android-volume-mute": "\uf3b8", "android-volume-off": "\uf3b9", "android-volume-up": "\uf3ba", "android-walk": "\uf3bb", "android-warning": "\uf3bc", "android-watch": "\uf3bd", "android-wifi": "\uf305", "aperture": "\uf313", "archive": "\uf102", "arrow-down-a": "\uf103", "arrow-down-b": "\uf104", "arrow-down-c": "\uf105", "arrow-expand": "\uf25e", "arrow-graph-down-left": "\uf25f", "arrow-graph-down-right": "\uf260", "arrow-graph-up-left": "\uf261", "arrow-graph-up-right": "\uf262", "arrow-left-a": "\uf106", "arrow-left-b": "\uf107", "arrow-left-c": "\uf108", "arrow-move": "\uf263", "arrow-resize": "\uf264", "arrow-return-left": "\uf265", "arrow-return-right": "\uf266", "arrow-right-a": "\uf109", "arrow-right-b": "\uf10a", "arrow-right-c": "\uf10b", "arrow-shrink": "\uf267", "arrow-swap": "\uf268", "arrow-up-a": "\uf10c", "arrow-up-b": "\uf10d", "arrow-up-c": "\uf10e", "asterisk": "\uf314", "at": "\uf10f", "backspace": "\uf3bf", "backspace-outline": "\uf3be", "bag": "\uf110", "battery-charging": "\uf111", "battery-empty": "\uf112", "battery-full": "\uf113", "battery-half": "\uf114", "battery-low": "\uf115", "beaker": "\uf269", "beer": "\uf26a", "bluetooth": "\uf116", "bonfire": "\uf315", "bookmark": "\uf26b", "bowtie": "\uf3c0", "briefcase": "\uf26c", "bug": "\uf2be", "calculator": "\uf26d", "calendar": "\uf117", "camera": "\uf118", "card": "\uf119", "cash": "\uf316", "chatbox": "\uf11b", "chatbox-working": "\uf11a", "chatboxes": "\uf11c", "chatbubble": "\uf11e", "chatbubble-working": "\uf11d", "chatbubbles": "\uf11f", "checkmark": "\uf122", "checkmark-circled": "\uf120", "checkmark-round": "\uf121", "chevron-down": "\uf123", "chevron-left": "\uf124", "chevron-right": "\uf125", "chevron-up": "\uf126", "clipboard": "\uf127", "clock": "\uf26e", "close": "\uf12a", "close-circled": "\uf128", "close-round": "\uf129", "closed-captioning": "\uf317", "cloud": "\uf12b", "code": "\uf271", "code-download": "\uf26f", "code-working": "\uf270", "coffee": "\uf272", "compass": "\uf273", "compose": "\uf12c", "connection-bars": "\uf274", "contrast": "\uf275", "crop": "\uf3c1", "cube": "\uf318", "disc": "\uf12d", "document": "\uf12f", "document-text": "\uf12e", "drag": "\uf130", "earth": "\uf276", "easel": "\uf3c2", "edit": "\uf2bf", "egg": "\uf277", "eject": "\uf131", "email": "\uf132", "email-unread": "\uf3c3", "erlenmeyer-flask": "\uf3c5", "erlenmeyer-flask-bubbles": "\uf3c4", "eye": "\uf133", "eye-disabled": "\uf306", "female": "\uf278", "filing": "\uf134", "film-marker": "\uf135", "fireball": "\uf319", "flag": "\uf279", "flame": "\uf31a", "flash": "\uf137", "flash-off": "\uf136", "folder": "\uf139", "fork": "\uf27a", "fork-repo": "\uf2c0", "forward": "\uf13a", "funnel": "\uf31b", "gear-a": "\uf13d", "gear-b": "\uf13e", "grid": "\uf13f", "hammer": "\uf27b", "happy": "\uf31c", "happy-outline": "\uf3c6", "headphone": "\uf140", "heart": "\uf141", "heart-broken": "\uf31d", "help": "\uf143", "help-buoy": "\uf27c", "help-circled": "\uf142", "home": "\uf144", "icecream": "\uf27d", "image": "\uf147", "images": "\uf148", "information": "\uf14a", "information-circled": "\uf149", "ionic": "\uf14b", "ios-alarm": "\uf3c8", "ios-alarm-outline": "\uf3c7", "ios-albums": "\uf3ca", "ios-albums-outline": "\uf3c9", "ios-americanfootball": "\uf3cc", "ios-americanfootball-outline": "\uf3cb", "ios-analytics": "\uf3ce", "ios-analytics-outline": "\uf3cd", "ios-arrow-back": "\uf3cf", "ios-arrow-down": "\uf3d0", "ios-arrow-forward": "\uf3d1", "ios-arrow-left": "\uf3d2", "ios-arrow-right": "\uf3d3", "ios-arrow-thin-down": "\uf3d4", "ios-arrow-thin-left": "\uf3d5", "ios-arrow-thin-right": "\uf3d6", "ios-arrow-thin-up": "\uf3d7", "ios-arrow-up": "\uf3d8", "ios-at": "\uf3da", "ios-at-outline": "\uf3d9", "ios-barcode": "\uf3dc", "ios-barcode-outline": "\uf3db", "ios-baseball": "\uf3de", "ios-baseball-outline": "\uf3dd", "ios-basketball": "\uf3e0", "ios-basketball-outline": "\uf3df", "ios-bell": "\uf3e2", "ios-bell-outline": "\uf3e1", "ios-body": "\uf3e4", "ios-body-outline": "\uf3e3", "ios-bolt": "\uf3e6", "ios-bolt-outline": "\uf3e5", "ios-book": "\uf3e8", "ios-book-outline": "\uf3e7", "ios-bookmarks": "\uf3ea", "ios-bookmarks-outline": "\uf3e9", "ios-box": "\uf3ec", "ios-box-outline": "\uf3eb", "ios-briefcase": "\uf3ee", "ios-briefcase-outline": "\uf3ed", "ios-browsers": "\uf3f0", "ios-browsers-outline": "\uf3ef", "ios-calculator": "\uf3f2", "ios-calculator-outline": "\uf3f1", "ios-calendar": "\uf3f4", "ios-calendar-outline": "\uf3f3", "ios-camera": "\uf3f6", "ios-camera-outline": "\uf3f5", "ios-cart": "\uf3f8", "ios-cart-outline": "\uf3f7", "ios-chatboxes": "\uf3fa", "ios-chatboxes-outline": "\uf3f9", "ios-chatbubble": "\uf3fc", "ios-chatbubble-outline": "\uf3fb", "ios-checkmark": "\uf3ff", "ios-checkmark-empty": "\uf3fd", "ios-checkmark-outline": "\uf3fe", "ios-circle-filled": "\uf400", "ios-circle-outline": "\uf401", "ios-clock": "\uf403", "ios-clock-outline": "\uf402", "ios-close": "\uf406", "ios-close-empty": "\uf404", "ios-close-outline": "\uf405", "ios-cloud": "\uf40c", "ios-cloud-download": "\uf408", "ios-cloud-download-outline": "\uf407", "ios-cloud-outline": "\uf409", "ios-cloud-upload": "\uf40b", "ios-cloud-upload-outline": "\uf40a", "ios-cloudy": "\uf410", "ios-cloudy-night": "\uf40e", "ios-cloudy-night-outline": "\uf40d", "ios-cloudy-outline": "\uf40f", "ios-cog": "\uf412", "ios-cog-outline": "\uf411", "ios-color-filter": "\uf414", "ios-color-filter-outline": "\uf413", "ios-color-wand": "\uf416", "ios-color-wand-outline": "\uf415", "ios-compose": "\uf418", "ios-compose-outline": "\uf417", "ios-contact": "\uf41a", "ios-contact-outline": "\uf419", "ios-copy": "\uf41c", "ios-copy-outline": "\uf41b", "ios-crop": "\uf41e", "ios-crop-strong": "\uf41d", "ios-download": "\uf420", "ios-download-outline": "\uf41f", "ios-drag": "\uf421", "ios-email": "\uf423", "ios-email-outline": "\uf422", "ios-eye": "\uf425", "ios-eye-outline": "\uf424", "ios-fastforward": "\uf427", "ios-fastforward-outline": "\uf426", "ios-filing": "\uf429", "ios-filing-outline": "\uf428", "ios-film": "\uf42b", "ios-film-outline": "\uf42a", "ios-flag": "\uf42d", "ios-flag-outline": "\uf42c", "ios-flame": "\uf42f", "ios-flame-outline": "\uf42e", "ios-flask": "\uf431", "ios-flask-outline": "\uf430", "ios-flower": "\uf433", "ios-flower-outline": "\uf432", "ios-folder": "\uf435", "ios-folder-outline": "\uf434", "ios-football": "\uf437", "ios-football-outline": "\uf436", "ios-game-controller-a": "\uf439", "ios-game-controller-a-outline": "\uf438", "ios-game-controller-b": "\uf43b", "ios-game-controller-b-outline": "\uf43a", "ios-gear": "\uf43d", "ios-gear-outline": "\uf43c", "ios-glasses": "\uf43f", "ios-glasses-outline": "\uf43e", "ios-grid-view": "\uf441", "ios-grid-view-outline": "\uf440", "ios-heart": "\uf443", "ios-heart-outline": "\uf442", "ios-help": "\uf446", "ios-help-empty": "\uf444", "ios-help-outline": "\uf445", "ios-home": "\uf448", "ios-home-outline": "\uf447", "ios-infinite": "\uf44a", "ios-infinite-outline": "\uf449", "ios-information": "\uf44d", "ios-information-empty": "\uf44b", "ios-information-outline": "\uf44c", "ios-ionic-outline": "\uf44e", "ios-keypad": "\uf450", "ios-keypad-outline": "\uf44f", "ios-lightbulb": "\uf452", "ios-lightbulb-outline": "\uf451", "ios-list": "\uf454", "ios-list-outline": "\uf453", "ios-location": "\uf456", "ios-location-outline": "\uf455", "ios-locked": "\uf458", "ios-locked-outline": "\uf457", "ios-loop": "\uf45a", "ios-loop-strong": "\uf459", "ios-medical": "\uf45c", "ios-medical-outline": "\uf45b", "ios-medkit": "\uf45e", "ios-medkit-outline": "\uf45d", "ios-mic": "\uf461", "ios-mic-off": "\uf45f", "ios-mic-outline": "\uf460", "ios-minus": "\uf464", "ios-minus-empty": "\uf462", "ios-minus-outline": "\uf463", "ios-monitor": "\uf466", "ios-monitor-outline": "\uf465", "ios-moon": "\uf468", "ios-moon-outline": "\uf467", "ios-more": "\uf46a", "ios-more-outline": "\uf469", "ios-musical-note": "\uf46b", "ios-musical-notes": "\uf46c", "ios-navigate": "\uf46e", "ios-navigate-outline": "\uf46d", "ios-nutrition": "\uf470", "ios-nutrition-outline": "\uf46f", "ios-paper": "\uf472", "ios-paper-outline": "\uf471", "ios-paperplane": "\uf474", "ios-paperplane-outline": "\uf473", "ios-partlysunny": "\uf476", "ios-partlysunny-outline": "\uf475", "ios-pause": "\uf478", "ios-pause-outline": "\uf477", "ios-paw": "\uf47a", "ios-paw-outline": "\uf479", "ios-people": "\uf47c", "ios-people-outline": "\uf47b", "ios-person": "\uf47e", "ios-person-outline": "\uf47d", "ios-personadd": "\uf480", "ios-personadd-outline": "\uf47f", "ios-photos": "\uf482", "ios-photos-outline": "\uf481", "ios-pie": "\uf484", "ios-pie-outline": "\uf483", "ios-pint": "\uf486", "ios-pint-outline": "\uf485", "ios-play": "\uf488", "ios-play-outline": "\uf487", "ios-plus": "\uf48b", "ios-plus-empty": "\uf489", "ios-plus-outline": "\uf48a", "ios-pricetag": "\uf48d", "ios-pricetag-outline": "\uf48c", "ios-pricetags": "\uf48f", "ios-pricetags-outline": "\uf48e", "ios-printer": "\uf491", "ios-printer-outline": "\uf490", "ios-pulse": "\uf493", "ios-pulse-strong": "\uf492", "ios-rainy": "\uf495", "ios-rainy-outline": "\uf494", "ios-recording": "\uf497", "ios-recording-outline": "\uf496", "ios-redo": "\uf499", "ios-redo-outline": "\uf498", "ios-refresh": "\uf49c", "ios-refresh-empty": "\uf49a", "ios-refresh-outline": "\uf49b", "ios-reload": "\uf49d", "ios-reverse-camera": "\uf49f", "ios-reverse-camera-outline": "\uf49e", "ios-rewind": "\uf4a1", "ios-rewind-outline": "\uf4a0", "ios-rose": "\uf4a3", "ios-rose-outline": "\uf4a2", "ios-search": "\uf4a5", "ios-search-strong": "\uf4a4", "ios-settings": "\uf4a7", "ios-settings-strong": "\uf4a6", "ios-shuffle": "\uf4a9", "ios-shuffle-strong": "\uf4a8", "ios-skipbackward": "\uf4ab", "ios-skipbackward-outline": "\uf4aa", "ios-skipforward": "\uf4ad", "ios-skipforward-outline": "\uf4ac", "ios-snowy": "\uf4ae", "ios-speedometer": "\uf4b0", "ios-speedometer-outline": "\uf4af", "ios-star": "\uf4b3", "ios-star-half": "\uf4b1", "ios-star-outline": "\uf4b2", "ios-stopwatch": "\uf4b5", "ios-stopwatch-outline": "\uf4b4", "ios-sunny": "\uf4b7", "ios-sunny-outline": "\uf4b6", "ios-telephone": "\uf4b9", "ios-telephone-outline": "\uf4b8", "ios-tennisball": "\uf4bb", "ios-tennisball-outline": "\uf4ba", "ios-thunderstorm": "\uf4bd", "ios-thunderstorm-outline": "\uf4bc", "ios-time": "\uf4bf", "ios-time-outline": "\uf4be", "ios-timer": "\uf4c1", "ios-timer-outline": "\uf4c0", "ios-toggle": "\uf4c3", "ios-toggle-outline": "\uf4c2", "ios-trash": "\uf4c5", "ios-trash-outline": "\uf4c4", "ios-undo": "\uf4c7", "ios-undo-outline": "\uf4c6", "ios-unlocked": "\uf4c9", "ios-unlocked-outline": "\uf4c8", "ios-upload": "\uf4cb", "ios-upload-outline": "\uf4ca", "ios-videocam": "\uf4cd", "ios-videocam-outline": "\uf4cc", "ios-volume-high": "\uf4ce", "ios-volume-low": "\uf4cf", "ios-wineglass": "\uf4d1", "ios-wineglass-outline": "\uf4d0", "ios-world": "\uf4d3", "ios-world-outline": "\uf4d2", "ipad": "\uf1f9", "iphone": "\uf1fa", "ipod": "\uf1fb", "jet": "\uf295", "key": "\uf296", "knife": "\uf297", "laptop": "\uf1fc", "leaf": "\uf1fd", "levels": "\uf298", "lightbulb": "\uf299", "link": "\uf1fe", "load-a": "\uf29a", "load-b": "\uf29b", "load-c": "\uf29c", "load-d": "\uf29d", "location": "\uf1ff", "lock-combination": "\uf4d4", "locked": "\uf200", "log-in": "\uf29e", "log-out": "\uf29f", "loop": "\uf201", "magnet": "\uf2a0", "male": "\uf2a1", "man": "\uf202", "map": "\uf203", "medkit": "\uf2a2", "merge": "\uf33f", "mic-a": "\uf204", "mic-b": "\uf205", "mic-c": "\uf206", "minus": "\uf209", "minus-circled": "\uf207", "minus-round": "\uf208", "model-s": "\uf2c1", "monitor": "\uf20a", "more": "\uf20b", "mouse": "\uf340", "music-note": "\uf20c", "navicon": "\uf20e", "navicon-round": "\uf20d", "navigate": "\uf2a3", "network": "\uf341", "no-smoking": "\uf2c2", "nuclear": "\uf2a4", "outlet": "\uf342", "paintbrush": "\uf4d5", "paintbucket": "\uf4d6", "paper-airplane": "\uf2c3", "paperclip": "\uf20f", "pause": "\uf210", "person": "\uf213", "person-add": "\uf211", "person-stalker": "\uf212", "pie-graph": "\uf2a5", "pin": "\uf2a6", "pinpoint": "\uf2a7", "pizza": "\uf2a8", "plane": "\uf214", "planet": "\uf343", "play": "\uf215", "playstation": "\uf30a", "plus": "\uf218", "plus-circled": "\uf216", "plus-round": "\uf217", "podium": "\uf344", "pound": "\uf219", "power": "\uf2a9", "pricetag": "\uf2aa", "pricetags": "\uf2ab", "printer": "\uf21a", "pull-request": "\uf345", "qr-scanner": "\uf346", "quote": "\uf347", "radio-waves": "\uf2ac", "record": "\uf21b", "refresh": "\uf21c", "reply": "\uf21e", "reply-all": "\uf21d", "ribbon-a": "\uf348", "ribbon-b": "\uf349", "sad": "\uf34a", "sad-outline": "\uf4d7", "scissors": "\uf34b", "search": "\uf21f", "settings": "\uf2ad", "share": "\uf220", "shuffle": "\uf221", "skip-backward": "\uf222", "skip-forward": "\uf223", "social-android": "\uf225", "social-android-outline": "\uf224", "social-angular": "\uf4d9", "social-angular-outline": "\uf4d8", "social-apple": "\uf227", "social-apple-outline": "\uf226", "social-bitcoin": "\uf2af", "social-bitcoin-outline": "\uf2ae", "social-buffer": "\uf229", "social-buffer-outline": "\uf228", "social-chrome": "\uf4db", "social-chrome-outline": "\uf4da", "social-codepen": "\uf4dd", "social-codepen-outline": "\uf4dc", "social-css3": "\uf4df", "social-css3-outline": "\uf4de", "social-designernews": "\uf22b", "social-designernews-outline": "\uf22a", "social-dribbble": "\uf22d", "social-dribbble-outline": "\uf22c", "social-dropbox": "\uf22f", "social-dropbox-outline": "\uf22e", "social-euro": "\uf4e1", "social-euro-outline": "\uf4e0", "social-facebook": "\uf231", "social-facebook-outline": "\uf230", "social-foursquare": "\uf34d", "social-foursquare-outline": "\uf34c", "social-freebsd-devil": "\uf2c4", "social-github": "\uf233", "social-github-outline": "\uf232", "social-google": "\uf34f", "social-google-outline": "\uf34e", "social-googleplus": "\uf235", "social-googleplus-outline": "\uf234", "social-hackernews": "\uf237", "social-hackernews-outline": "\uf236", "social-html5": "\uf4e3", "social-html5-outline": "\uf4e2", "social-instagram": "\uf351", "social-instagram-outline": "\uf350", "social-javascript": "\uf4e5", "social-javascript-outline": "\uf4e4", "social-linkedin": "\uf239", "social-linkedin-outline": "\uf238", "social-markdown": "\uf4e6", "social-nodejs": "\uf4e7", "social-octocat": "\uf4e8", "social-pinterest": "\uf2b1", "social-pinterest-outline": "\uf2b0", "social-python": "\uf4e9", "social-reddit": "\uf23b", "social-reddit-outline": "\uf23a", "social-rss": "\uf23d", "social-rss-outline": "\uf23c", "social-sass": "\uf4ea", "social-skype": "\uf23f", "social-skype-outline": "\uf23e", "social-snapchat": "\uf4ec", "social-snapchat-outline": "\uf4eb", "social-tumblr": "\uf241", "social-tumblr-outline": "\uf240", "social-tux": "\uf2c5", "social-twitch": "\uf4ee", "social-twitch-outline": "\uf4ed", "social-twitter": "\uf243", "social-twitter-outline": "\uf242", "social-usd": "\uf353", "social-usd-outline": "\uf352", "social-vimeo": "\uf245", "social-vimeo-outline": "\uf244", "social-whatsapp": "\uf4f0", "social-whatsapp-outline": "\uf4ef", "social-windows": "\uf247", "social-windows-outline": "\uf246", "social-wordpress": "\uf249", "social-wordpress-outline": "\uf248", "social-yahoo": "\uf24b", "social-yahoo-outline": "\uf24a", "social-yen": "\uf4f2", "social-yen-outline": "\uf4f1", "social-youtube": "\uf24d", "social-youtube-outline": "\uf24c", "soup-can": "\uf4f4", "soup-can-outline": "\uf4f3", "speakerphone": "\uf2b2", "speedometer": "\uf2b3", "spoon": "\uf2b4", "star": "\uf24e", "stats-bars": "\uf2b5", "steam": "\uf30b", "stop": "\uf24f", "thermometer": "\uf2b6", "thumbsdown": "\uf250", "thumbsup": "\uf251", "toggle": "\uf355", "toggle-filled": "\uf354", "transgender": "\uf4f5", "trash-a": "\uf252", "trash-b": "\uf253", "trophy": "\uf356", "tshirt": "\uf4f7", "tshirt-outline": "\uf4f6", "umbrella": "\uf2b7", "university": "\uf357", "unlocked": "\uf254", "upload": "\uf255", "usb": "\uf2b8", "videocamera": "\uf256", "volume-high": "\uf257", "volume-low": "\uf258", "volume-medium": "\uf259", "volume-mute": "\uf25a", "wand": "\uf358", "waterdrop": "\uf25b", "wifi": "\uf25c", "wineglass": "\uf2b9", "woman": "\uf25d", "wrench": "\uf2ba", "xbox": "\uf30c"};
+
+window.getUniqueId = function (stringPrefix) {
+    var datestr = new Date().getTime().toString();
+    var randomstr = Math.random().toString().replace('.', '');
+    return stringPrefix + '_' + datestr + randomstr;
+}
+
+window.getTextWidth = function(text, font) {
+    // re-use canvas object for better performance
+    var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
+    var context = canvas.getContext("2d");
+    context.font = font;
+    var metrics = context.measureText(text);
+    return metrics.width;
+}
+
+window.drawText = function(ctx, canvas, text, fontSize, fontFamily, color, scale = 1, align = 'center', baseline = 'middle', fontWeight = 'normal') {
+	ctx.font = fontWeight + ' ' + fontSize+' '+fontFamily;
+	ctx.fillStyle = color;
+	ctx.textAlign = align;
+	ctx.textBaseline = baseline;
+	ctx.scale(scale, scale);
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	var textString = text + '';
+	if (textString.match("char#")) {
+		var char = textString.substring(textString.indexOf('#')+1);
+		if(align == 'left'){
+		   	ctx.fillText(String.fromCharCode(char), canvas.height/8, canvas.height/2); // position x, y
+		}else{
+		   	ctx.fillText(String.fromCharCode(char), canvas.width/2, canvas.height/2); // position x, y
+		}
+	}else{
+		if(align == 'left'){
+	    	ctx.fillText(textString, canvas.height/8, canvas.height/2); // position x, y
+		}else{
+	    	ctx.fillText(textString, canvas.width/2, canvas.height/2); // position x, y
+		}
+	}
+}
+
+window.drawIcon = function(ctx, canvas, iconFontSize, icon, color, scale = 1) {
+ 	ctx.font = iconFontSize+' Ionicons';
+ 	ctx.fillStyle = color;
+ 	ctx.textAlign = "center";
+ 	ctx.textBaseline = 'middle';
+ 	ctx.clearRect(0, 0, canvas.width, canvas.height);
+ 	ctx.scale(scale, scale);
+ 	if(icon_font[icon]){
+ 	    ctx.fillText(icon_font[icon], canvas.width/2, canvas.height/2);
+ 	}else{
+ 	    ctx.fillText('?', canvas.width/2, canvas.height/2);
+ 	}
+}
+
+},{}],22:[function(require,module,exports){
 var positions = [];
 var positionHelper = new THREE.Vector3();
 
@@ -1006,7 +3653,7 @@ function pushPositionVec3 (vec3) {
   positions.push(vec3.z);
 }
 
-},{}],4:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 /**
  * Particles component for A-Frame.
  *
@@ -1317,7 +3964,7 @@ AFRAME.registerComponent('particle-system', {
     }
 });
 
-},{"./lib/SPE.js":5}],5:[function(require,module,exports){
+},{"./lib/SPE.js":24}],24:[function(require,module,exports){
 /* shader-particle-engine 1.0.5
  *
  * (c) 2015 Luke Moody (http://www.github.com/squarefeet)
@@ -4846,7 +7493,7 @@ SPE.Emitter.prototype.remove = function() {
     return this;
 };
 
-},{}],6:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 var templateString = require('es6-template-strings');
 
 var debug = AFRAME.utils.debug;
@@ -5106,7 +7753,7 @@ AFRAME.registerComponent('template-set', {
   }
 });
 
-},{"es6-template-strings":47}],7:[function(require,module,exports){
+},{"es6-template-strings":66}],26:[function(require,module,exports){
 (function (global,Buffer,setImmediate){
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.AFRAME = f()}})(function(){var define,module,exports;return (function(){function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s}return e})()({1:[function(_dereq_,module,exports){
 var str = Object.prototype.toString
@@ -86407,7 +89054,7 @@ module.exports = getWakeLock();
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer,require("timers").setImmediate)
-},{"buffer":9,"timers":57}],8:[function(require,module,exports){
+},{"buffer":28,"timers":76}],27:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -86561,7 +89208,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],9:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 (function (Buffer){
 /*!
  * The buffer module from node.js, for the browser.
@@ -88364,7 +91011,7 @@ var hexSliceLookupTable = (function () {
 })()
 
 }).call(this,require("buffer").Buffer)
-},{"base64-js":8,"buffer":9,"ieee754":56}],10:[function(require,module,exports){
+},{"base64-js":27,"buffer":28,"ieee754":75}],29:[function(require,module,exports){
 "use strict";
 
 var isValue         = require("type/value/is")
@@ -88428,12 +91075,12 @@ d.gs = function (dscr, get, set/*, options*/) {
 	return !options ? desc : assign(normalizeOpts(options), desc);
 };
 
-},{"es5-ext/object/assign":23,"es5-ext/object/normalize-options":30,"es5-ext/string/#/contains":34,"type/plain-function/is":61,"type/value/is":63}],11:[function(require,module,exports){
+},{"es5-ext/object/assign":42,"es5-ext/object/normalize-options":49,"es5-ext/string/#/contains":53,"type/plain-function/is":80,"type/value/is":82}],30:[function(require,module,exports){
 "use strict";
 
 module.exports = require("./is-implemented")() ? Array.from : require("./shim");
 
-},{"./is-implemented":12,"./shim":13}],12:[function(require,module,exports){
+},{"./is-implemented":31,"./shim":32}],31:[function(require,module,exports){
 "use strict";
 
 module.exports = function () {
@@ -88444,7 +91091,7 @@ module.exports = function () {
 	return Boolean(result && result !== arr && result[1] === "dwa");
 };
 
-},{}],13:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 "use strict";
 
 var iteratorSymbol = require("es6-symbol").iterator
@@ -88565,7 +91212,7 @@ module.exports = function (arrayLike/*, mapFn, thisArg*/) {
 	return arr;
 };
 
-},{"../../function/is-arguments":14,"../../function/is-function":15,"../../number/to-pos-integer":22,"../../object/is-value":26,"../../object/valid-callable":32,"../../object/valid-value":33,"../../string/is-string":37,"es6-symbol":38}],14:[function(require,module,exports){
+},{"../../function/is-arguments":33,"../../function/is-function":34,"../../number/to-pos-integer":41,"../../object/is-value":45,"../../object/valid-callable":51,"../../object/valid-value":52,"../../string/is-string":56,"es6-symbol":57}],33:[function(require,module,exports){
 "use strict";
 
 var objToString = Object.prototype.toString
@@ -88573,7 +91220,7 @@ var objToString = Object.prototype.toString
 
 module.exports = function (value) { return objToString.call(value) === id; };
 
-},{}],15:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 "use strict";
 
 var objToString = Object.prototype.toString
@@ -88583,13 +91230,13 @@ module.exports = function (value) {
 	return typeof value === "function" && isFunctionStringTag(objToString.call(value));
 };
 
-},{}],16:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 "use strict";
 
 // eslint-disable-next-line no-empty-function
 module.exports = function () {};
 
-},{}],17:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 module.exports = (function () {
 	if (this) return this;
 
@@ -88606,12 +91253,12 @@ module.exports = (function () {
 	finally { delete Object.prototype.__global__; }
 })();
 
-},{}],18:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 "use strict";
 
 module.exports = require("./is-implemented")() ? Math.sign : require("./shim");
 
-},{"./is-implemented":19,"./shim":20}],19:[function(require,module,exports){
+},{"./is-implemented":38,"./shim":39}],38:[function(require,module,exports){
 "use strict";
 
 module.exports = function () {
@@ -88620,7 +91267,7 @@ module.exports = function () {
 	return sign(10) === 1 && sign(-20) === -1;
 };
 
-},{}],20:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 "use strict";
 
 module.exports = function (value) {
@@ -88629,7 +91276,7 @@ module.exports = function (value) {
 	return value > 0 ? 1 : -1;
 };
 
-},{}],21:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 "use strict";
 
 var sign  = require("../math/sign")
@@ -88643,7 +91290,7 @@ module.exports = function (value) {
 	return sign(value) * floor(abs(value));
 };
 
-},{"../math/sign":18}],22:[function(require,module,exports){
+},{"../math/sign":37}],41:[function(require,module,exports){
 "use strict";
 
 var toInteger = require("./to-integer")
@@ -88651,12 +91298,12 @@ var toInteger = require("./to-integer")
 
 module.exports = function (value) { return max(0, toInteger(value)); };
 
-},{"./to-integer":21}],23:[function(require,module,exports){
+},{"./to-integer":40}],42:[function(require,module,exports){
 "use strict";
 
 module.exports = require("./is-implemented")() ? Object.assign : require("./shim");
 
-},{"./is-implemented":24,"./shim":25}],24:[function(require,module,exports){
+},{"./is-implemented":43,"./shim":44}],43:[function(require,module,exports){
 "use strict";
 
 module.exports = function () {
@@ -88667,7 +91314,7 @@ module.exports = function () {
 	return obj.foo + obj.bar + obj.trzy === "razdwatrzy";
 };
 
-},{}],25:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 "use strict";
 
 var keys  = require("../keys")
@@ -88692,19 +91339,19 @@ module.exports = function (dest, src/*, …srcn*/) {
 	return dest;
 };
 
-},{"../keys":27,"../valid-value":33}],26:[function(require,module,exports){
+},{"../keys":46,"../valid-value":52}],45:[function(require,module,exports){
 "use strict";
 
 var _undefined = require("../function/noop")(); // Support ES3 engines
 
 module.exports = function (val) { return val !== _undefined && val !== null; };
 
-},{"../function/noop":16}],27:[function(require,module,exports){
+},{"../function/noop":35}],46:[function(require,module,exports){
 "use strict";
 
 module.exports = require("./is-implemented")() ? Object.keys : require("./shim");
 
-},{"./is-implemented":28,"./shim":29}],28:[function(require,module,exports){
+},{"./is-implemented":47,"./shim":48}],47:[function(require,module,exports){
 "use strict";
 
 module.exports = function () {
@@ -88716,7 +91363,7 @@ module.exports = function () {
 	}
 };
 
-},{}],29:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 "use strict";
 
 var isValue = require("../is-value");
@@ -88725,7 +91372,7 @@ var keys = Object.keys;
 
 module.exports = function (object) { return keys(isValue(object) ? Object(object) : object); };
 
-},{"../is-value":26}],30:[function(require,module,exports){
+},{"../is-value":45}],49:[function(require,module,exports){
 "use strict";
 
 var isValue = require("./is-value");
@@ -88747,7 +91394,7 @@ module.exports = function (opts1/*, …options*/) {
 	return result;
 };
 
-},{"./is-value":26}],31:[function(require,module,exports){
+},{"./is-value":45}],50:[function(require,module,exports){
 "use strict";
 
 var forEach = Array.prototype.forEach, create = Object.create;
@@ -88759,7 +91406,7 @@ module.exports = function (arg/*, …args*/) {
 	return set;
 };
 
-},{}],32:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 "use strict";
 
 module.exports = function (fn) {
@@ -88767,7 +91414,7 @@ module.exports = function (fn) {
 	return fn;
 };
 
-},{}],33:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 "use strict";
 
 var isValue = require("./is-value");
@@ -88777,12 +91424,12 @@ module.exports = function (value) {
 	return value;
 };
 
-},{"./is-value":26}],34:[function(require,module,exports){
+},{"./is-value":45}],53:[function(require,module,exports){
 "use strict";
 
 module.exports = require("./is-implemented")() ? String.prototype.contains : require("./shim");
 
-},{"./is-implemented":35,"./shim":36}],35:[function(require,module,exports){
+},{"./is-implemented":54,"./shim":55}],54:[function(require,module,exports){
 "use strict";
 
 var str = "razdwatrzy";
@@ -88792,7 +91439,7 @@ module.exports = function () {
 	return str.contains("dwa") === true && str.contains("foo") === false;
 };
 
-},{}],36:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 "use strict";
 
 var indexOf = String.prototype.indexOf;
@@ -88801,7 +91448,7 @@ module.exports = function (searchString/*, position*/) {
 	return indexOf.call(this, searchString, arguments[1]) > -1;
 };
 
-},{}],37:[function(require,module,exports){
+},{}],56:[function(require,module,exports){
 "use strict";
 
 var objToString = Object.prototype.toString, id = objToString.call("");
@@ -88816,14 +91463,14 @@ module.exports = function (value) {
 	);
 };
 
-},{}],38:[function(require,module,exports){
+},{}],57:[function(require,module,exports){
 "use strict";
 
 module.exports = require("./is-implemented")()
 	? require("es5-ext/global").Symbol
 	: require("./polyfill");
 
-},{"./is-implemented":39,"./polyfill":44,"es5-ext/global":17}],39:[function(require,module,exports){
+},{"./is-implemented":58,"./polyfill":63,"es5-ext/global":36}],58:[function(require,module,exports){
 "use strict";
 
 var global     = require("es5-ext/global")
@@ -88845,7 +91492,7 @@ module.exports = function () {
 	return true;
 };
 
-},{"es5-ext/global":17}],40:[function(require,module,exports){
+},{"es5-ext/global":36}],59:[function(require,module,exports){
 "use strict";
 
 module.exports = function (value) {
@@ -88856,7 +91503,7 @@ module.exports = function (value) {
 	return value[value.constructor.toStringTag] === "Symbol";
 };
 
-},{}],41:[function(require,module,exports){
+},{}],60:[function(require,module,exports){
 "use strict";
 
 var d = require("d");
@@ -88887,7 +91534,7 @@ module.exports = function (desc) {
 	return name;
 };
 
-},{"d":10}],42:[function(require,module,exports){
+},{"d":29}],61:[function(require,module,exports){
 "use strict";
 
 var d            = require("d")
@@ -88923,7 +91570,7 @@ module.exports = function (SymbolPolyfill) {
 	});
 };
 
-},{"d":10,"es5-ext/global":17}],43:[function(require,module,exports){
+},{"d":29,"es5-ext/global":36}],62:[function(require,module,exports){
 "use strict";
 
 var d              = require("d")
@@ -88948,7 +91595,7 @@ module.exports = function (SymbolPolyfill) {
 	});
 };
 
-},{"../../../validate-symbol":45,"d":10}],44:[function(require,module,exports){
+},{"../../../validate-symbol":64,"d":29}],63:[function(require,module,exports){
 // ES2015 Symbol polyfill for environments that do not (or partially) support it
 
 "use strict";
@@ -89037,7 +91684,7 @@ defineProperty(
 	d("c", SymbolPolyfill.prototype[SymbolPolyfill.toPrimitive])
 );
 
-},{"./lib/private/generate-name":41,"./lib/private/setup/standard-symbols":42,"./lib/private/setup/symbol-registry":43,"./validate-symbol":45,"d":10,"es5-ext/global":17}],45:[function(require,module,exports){
+},{"./lib/private/generate-name":60,"./lib/private/setup/standard-symbols":61,"./lib/private/setup/symbol-registry":62,"./validate-symbol":64,"d":29,"es5-ext/global":36}],64:[function(require,module,exports){
 "use strict";
 
 var isSymbol = require("./is-symbol");
@@ -89047,7 +91694,7 @@ module.exports = function (value) {
 	return value;
 };
 
-},{"./is-symbol":40}],46:[function(require,module,exports){
+},{"./is-symbol":59}],65:[function(require,module,exports){
 'use strict';
 
 var esniff = require('esniff')
@@ -89128,7 +91775,7 @@ module.exports = function (str) {
 	return result;
 };
 
-},{"esniff":51}],47:[function(require,module,exports){
+},{"esniff":70}],66:[function(require,module,exports){
 'use strict';
 
 var compile = require('./compile')
@@ -89138,7 +91785,7 @@ module.exports = function (template, context/*, options*/) {
 	return resolve(compile(template), context, arguments[2]);
 };
 
-},{"./compile":46,"./resolve-to-string":49}],48:[function(require,module,exports){
+},{"./compile":65,"./resolve-to-string":68}],67:[function(require,module,exports){
 'use strict';
 
 var reduce = Array.prototype.reduce;
@@ -89150,7 +91797,7 @@ module.exports = function (literals/*, …substitutions*/) {
 	});
 };
 
-},{}],49:[function(require,module,exports){
+},{}],68:[function(require,module,exports){
 'use strict';
 
 var resolve  = require('./resolve')
@@ -89160,7 +91807,7 @@ module.exports = function (data, context/*, options*/) {
 	return passthru.apply(null, resolve(data, context, arguments[2]));
 };
 
-},{"./passthru":48,"./resolve":50}],50:[function(require,module,exports){
+},{"./passthru":67,"./resolve":69}],69:[function(require,module,exports){
 'use strict';
 
 var value          = require('es5-ext/object/valid-value')
@@ -89197,7 +91844,7 @@ module.exports = function (data, context/*, options*/) {
 	}));
 };
 
-},{"es5-ext/object/normalize-options":30,"es5-ext/object/valid-value":33,"esniff/is-var-name-valid":52}],51:[function(require,module,exports){
+},{"es5-ext/object/normalize-options":49,"es5-ext/object/valid-value":52,"esniff/is-var-name-valid":71}],70:[function(require,module,exports){
 'use strict';
 
 var from         = require('es5-ext/array/from')
@@ -89429,14 +92076,14 @@ Object.defineProperties(exports, {
 	resume: d(function () { return $common; })
 });
 
-},{"./lib/ws":55,"./lib/ws-eol":53,"d":10,"es5-ext/array/from":11,"es5-ext/object/primitive-set":31,"es5-ext/object/valid-callable":32,"es5-ext/object/valid-value":33}],52:[function(require,module,exports){
+},{"./lib/ws":74,"./lib/ws-eol":72,"d":29,"es5-ext/array/from":30,"es5-ext/object/primitive-set":50,"es5-ext/object/valid-callable":51,"es5-ext/object/valid-value":52}],71:[function(require,module,exports){
 // Credit: Mathias Bynens -> https://mathiasbynens.be/demo/javascript-identifier-regex
 
 'use strict';
 
 module.exports = RegExp.prototype.test.bind(/^(?!(?:do|if|in|for|let|new|try|var|case|else|enum|eval|null|this|true|void|with|await|break|catch|class|const|false|super|throw|while|yield|delete|export|import|public|return|static|switch|typeof|default|extends|finally|package|private|continue|debugger|function|arguments|interface|protected|implements|instanceof)$)(?:[\$A-Z_a-z\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0370-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u05D0-\u05EA\u05F0-\u05F2\u0620-\u064A\u066E\u066F\u0671-\u06D3\u06D5\u06E5\u06E6\u06EE\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u07A5\u07B1\u07CA-\u07EA\u07F4\u07F5\u07FA\u0800-\u0815\u081A\u0824\u0828\u0840-\u0858\u08A0-\u08B4\u08B6-\u08BD\u0904-\u0939\u093D\u0950\u0958-\u0961\u0971-\u0980\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC\u09DD\u09DF-\u09E1\u09F0\u09F1\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0\u0AE1\u0AF9\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D\u0B5C\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BD0\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D\u0C58-\u0C5A\u0C60\u0C61\u0C80\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDE\u0CE0\u0CE1\u0CF1\u0CF2\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D\u0D4E\u0D54-\u0D56\u0D5F-\u0D61\u0D7A-\u0D7F\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32\u0E33\u0E40-\u0E46\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB0\u0EB2\u0EB3\u0EBD\u0EC0-\u0EC4\u0EC6\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F88-\u0F8C\u1000-\u102A\u103F\u1050-\u1055\u105A-\u105D\u1061\u1065\u1066\u106E-\u1070\u1075-\u1081\u108E\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F8\u1700-\u170C\u170E-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17D7\u17DC\u1820-\u1877\u1880-\u18A8\u18AA\u18B0-\u18F5\u1900-\u191E\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u1A00-\u1A16\u1A20-\u1A54\u1AA7\u1B05-\u1B33\u1B45-\u1B4B\u1B83-\u1BA0\u1BAE\u1BAF\u1BBA-\u1BE5\u1C00-\u1C23\u1C4D-\u1C4F\u1C5A-\u1C7D\u1C80-\u1C88\u1CE9-\u1CEC\u1CEE-\u1CF1\u1CF5\u1CF6\u1D00-\u1DBF\u1E00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u2090-\u209C\u2102\u2107\u210A-\u2113\u2115\u2118-\u211D\u2124\u2126\u2128\u212A-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CEE\u2CF2\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u3005-\u3007\u3021-\u3029\u3031-\u3035\u3038-\u303C\u3041-\u3096\u309B-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FD5\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA61F\uA62A\uA62B\uA640-\uA66E\uA67F-\uA69D\uA6A0-\uA6EF\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AE\uA7B0-\uA7B7\uA7F7-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uA840-\uA873\uA882-\uA8B3\uA8F2-\uA8F7\uA8FB\uA8FD\uA90A-\uA925\uA930-\uA946\uA960-\uA97C\uA984-\uA9B2\uA9CF\uA9E0-\uA9E4\uA9E6-\uA9EF\uA9FA-\uA9FE\uAA00-\uAA28\uAA40-\uAA42\uAA44-\uAA4B\uAA60-\uAA76\uAA7A\uAA7E-\uAAAF\uAAB1\uAAB5\uAAB6\uAAB9-\uAABD\uAAC0\uAAC2\uAADB-\uAADD\uAAE0-\uAAEA\uAAF2-\uAAF4\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABE2\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDD40-\uDD74\uDE80-\uDE9C\uDEA0-\uDED0\uDF00-\uDF1F\uDF30-\uDF4A\uDF50-\uDF75\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF\uDFD1-\uDFD5]|\uD801[\uDC00-\uDC9D\uDCB0-\uDCD3\uDCD8-\uDCFB\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00\uDE10-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE4\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD804[\uDC03-\uDC37\uDC83-\uDCAF\uDCD0-\uDCE8\uDD03-\uDD26\uDD50-\uDD72\uDD76\uDD83-\uDDB2\uDDC1-\uDDC4\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE2B\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEDE\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3D\uDF50\uDF5D-\uDF61]|\uD805[\uDC00-\uDC34\uDC47-\uDC4A\uDC80-\uDCAF\uDCC4\uDCC5\uDCC7\uDD80-\uDDAE\uDDD8-\uDDDB\uDE00-\uDE2F\uDE44\uDE80-\uDEAA\uDF00-\uDF19]|\uD806[\uDCA0-\uDCDF\uDCFF\uDEC0-\uDEF8]|\uD807[\uDC00-\uDC08\uDC0A-\uDC2E\uDC40\uDC72-\uDC8F]|\uD808[\uDC00-\uDF99]|\uD809[\uDC00-\uDC6E\uDC80-\uDD43]|[\uD80C\uD81C-\uD820\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2E]|\uD811[\uDC00-\uDE46]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDED0-\uDEED\uDF00-\uDF2F\uDF40-\uDF43\uDF63-\uDF77\uDF7D-\uDF8F]|\uD81B[\uDF00-\uDF44\uDF50\uDF93-\uDF9F\uDFE0]|\uD821[\uDC00-\uDFEC]|\uD822[\uDC00-\uDEF2]|\uD82C[\uDC00\uDC01]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB]|\uD83A[\uDC00-\uDCC4\uDD00-\uDD43]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD873[\uDC00-\uDEA1]|\uD87E[\uDC00-\uDE1D])(?:[\$0-9A-Z_a-z\xAA\xB5\xB7\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0300-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u0483-\u0487\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u05D0-\u05EA\u05F0-\u05F2\u0610-\u061A\u0620-\u0669\u066E-\u06D3\u06D5-\u06DC\u06DF-\u06E8\u06EA-\u06FC\u06FF\u0710-\u074A\u074D-\u07B1\u07C0-\u07F5\u07FA\u0800-\u082D\u0840-\u085B\u08A0-\u08B4\u08B6-\u08BD\u08D4-\u08E1\u08E3-\u0963\u0966-\u096F\u0971-\u0983\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BC-\u09C4\u09C7\u09C8\u09CB-\u09CE\u09D7\u09DC\u09DD\u09DF-\u09E3\u09E6-\u09F1\u0A01-\u0A03\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A59-\u0A5C\u0A5E\u0A66-\u0A75\u0A81-\u0A83\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABC-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AD0\u0AE0-\u0AE3\u0AE6-\u0AEF\u0AF9\u0B01-\u0B03\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3C-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B5C\u0B5D\u0B5F-\u0B63\u0B66-\u0B6F\u0B71\u0B82\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD0\u0BD7\u0BE6-\u0BEF\u0C00-\u0C03\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C58-\u0C5A\u0C60-\u0C63\u0C66-\u0C6F\u0C80-\u0C83\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBC-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CDE\u0CE0-\u0CE3\u0CE6-\u0CEF\u0CF1\u0CF2\u0D01-\u0D03\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D-\u0D44\u0D46-\u0D48\u0D4A-\u0D4E\u0D54-\u0D57\u0D5F-\u0D63\u0D66-\u0D6F\u0D7A-\u0D7F\u0D82\u0D83\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DE6-\u0DEF\u0DF2\u0DF3\u0E01-\u0E3A\u0E40-\u0E4E\u0E50-\u0E59\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB9\u0EBB-\u0EBD\u0EC0-\u0EC4\u0EC6\u0EC8-\u0ECD\u0ED0-\u0ED9\u0EDC-\u0EDF\u0F00\u0F18\u0F19\u0F20-\u0F29\u0F35\u0F37\u0F39\u0F3E-\u0F47\u0F49-\u0F6C\u0F71-\u0F84\u0F86-\u0F97\u0F99-\u0FBC\u0FC6\u1000-\u1049\u1050-\u109D\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u135D-\u135F\u1369-\u1371\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F8\u1700-\u170C\u170E-\u1714\u1720-\u1734\u1740-\u1753\u1760-\u176C\u176E-\u1770\u1772\u1773\u1780-\u17D3\u17D7\u17DC\u17DD\u17E0-\u17E9\u180B-\u180D\u1810-\u1819\u1820-\u1877\u1880-\u18AA\u18B0-\u18F5\u1900-\u191E\u1920-\u192B\u1930-\u193B\u1946-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u19D0-\u19DA\u1A00-\u1A1B\u1A20-\u1A5E\u1A60-\u1A7C\u1A7F-\u1A89\u1A90-\u1A99\u1AA7\u1AB0-\u1ABD\u1B00-\u1B4B\u1B50-\u1B59\u1B6B-\u1B73\u1B80-\u1BF3\u1C00-\u1C37\u1C40-\u1C49\u1C4D-\u1C7D\u1C80-\u1C88\u1CD0-\u1CD2\u1CD4-\u1CF6\u1CF8\u1CF9\u1D00-\u1DF5\u1DFB-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u200C\u200D\u203F\u2040\u2054\u2071\u207F\u2090-\u209C\u20D0-\u20DC\u20E1\u20E5-\u20F0\u2102\u2107\u210A-\u2113\u2115\u2118-\u211D\u2124\u2126\u2128\u212A-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D7F-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2DE0-\u2DFF\u3005-\u3007\u3021-\u302F\u3031-\u3035\u3038-\u303C\u3041-\u3096\u3099-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FD5\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA62B\uA640-\uA66F\uA674-\uA67D\uA67F-\uA6F1\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AE\uA7B0-\uA7B7\uA7F7-\uA827\uA840-\uA873\uA880-\uA8C5\uA8D0-\uA8D9\uA8E0-\uA8F7\uA8FB\uA8FD\uA900-\uA92D\uA930-\uA953\uA960-\uA97C\uA980-\uA9C0\uA9CF-\uA9D9\uA9E0-\uA9FE\uAA00-\uAA36\uAA40-\uAA4D\uAA50-\uAA59\uAA60-\uAA76\uAA7A-\uAAC2\uAADB-\uAADD\uAAE0-\uAAEF\uAAF2-\uAAF6\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABEA\uABEC\uABED\uABF0-\uABF9\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE00-\uFE0F\uFE20-\uFE2F\uFE33\uFE34\uFE4D-\uFE4F\uFE70-\uFE74\uFE76-\uFEFC\uFF10-\uFF19\uFF21-\uFF3A\uFF3F\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDD40-\uDD74\uDDFD\uDE80-\uDE9C\uDEA0-\uDED0\uDEE0\uDF00-\uDF1F\uDF30-\uDF4A\uDF50-\uDF7A\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF\uDFD1-\uDFD5]|\uD801[\uDC00-\uDC9D\uDCA0-\uDCA9\uDCB0-\uDCD3\uDCD8-\uDCFB\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00-\uDE03\uDE05\uDE06\uDE0C-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE38-\uDE3A\uDE3F\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE6\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD804[\uDC00-\uDC46\uDC66-\uDC6F\uDC7F-\uDCBA\uDCD0-\uDCE8\uDCF0-\uDCF9\uDD00-\uDD34\uDD36-\uDD3F\uDD50-\uDD73\uDD76\uDD80-\uDDC4\uDDCA-\uDDCC\uDDD0-\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE37\uDE3E\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEEA\uDEF0-\uDEF9\uDF00-\uDF03\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3C-\uDF44\uDF47\uDF48\uDF4B-\uDF4D\uDF50\uDF57\uDF5D-\uDF63\uDF66-\uDF6C\uDF70-\uDF74]|\uD805[\uDC00-\uDC4A\uDC50-\uDC59\uDC80-\uDCC5\uDCC7\uDCD0-\uDCD9\uDD80-\uDDB5\uDDB8-\uDDC0\uDDD8-\uDDDD\uDE00-\uDE40\uDE44\uDE50-\uDE59\uDE80-\uDEB7\uDEC0-\uDEC9\uDF00-\uDF19\uDF1D-\uDF2B\uDF30-\uDF39]|\uD806[\uDCA0-\uDCE9\uDCFF\uDEC0-\uDEF8]|\uD807[\uDC00-\uDC08\uDC0A-\uDC36\uDC38-\uDC40\uDC50-\uDC59\uDC72-\uDC8F\uDC92-\uDCA7\uDCA9-\uDCB6]|\uD808[\uDC00-\uDF99]|\uD809[\uDC00-\uDC6E\uDC80-\uDD43]|[\uD80C\uD81C-\uD820\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2E]|\uD811[\uDC00-\uDE46]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDE60-\uDE69\uDED0-\uDEED\uDEF0-\uDEF4\uDF00-\uDF36\uDF40-\uDF43\uDF50-\uDF59\uDF63-\uDF77\uDF7D-\uDF8F]|\uD81B[\uDF00-\uDF44\uDF50-\uDF7E\uDF8F-\uDF9F\uDFE0]|\uD821[\uDC00-\uDFEC]|\uD822[\uDC00-\uDEF2]|\uD82C[\uDC00\uDC01]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99\uDC9D\uDC9E]|\uD834[\uDD65-\uDD69\uDD6D-\uDD72\uDD7B-\uDD82\uDD85-\uDD8B\uDDAA-\uDDAD\uDE42-\uDE44]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB\uDFCE-\uDFFF]|\uD836[\uDE00-\uDE36\uDE3B-\uDE6C\uDE75\uDE84\uDE9B-\uDE9F\uDEA1-\uDEAF]|\uD838[\uDC00-\uDC06\uDC08-\uDC18\uDC1B-\uDC21\uDC23\uDC24\uDC26-\uDC2A]|\uD83A[\uDC00-\uDCC4\uDCD0-\uDCD6\uDD00-\uDD4A\uDD50-\uDD59]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD873[\uDC00-\uDEA1]|\uD87E[\uDC00-\uDE1D]|\uDB40[\uDD00-\uDDEF])*$/);
 
-},{}],53:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 'use strict';
 
 var from         = require('es5-ext/array/from')
@@ -89444,7 +92091,7 @@ var from         = require('es5-ext/array/from')
 
 module.exports = primitiveSet.apply(null, from('\n\r\u2028\u2029'));
 
-},{"es5-ext/array/from":11,"es5-ext/object/primitive-set":31}],54:[function(require,module,exports){
+},{"es5-ext/array/from":30,"es5-ext/object/primitive-set":50}],73:[function(require,module,exports){
 'use strict';
 
 var from         = require('es5-ext/array/from')
@@ -89454,7 +92101,7 @@ module.exports = primitiveSet.apply(null, from(' \f\t\v​\u00a0\u1680​\u180e'
 	'\u2000​\u2001\u2002​\u2003\u2004​\u2005\u2006​\u2007\u2008​\u2009\u200a' +
 	'​​​\u202f\u205f​\u3000'));
 
-},{"es5-ext/array/from":11,"es5-ext/object/primitive-set":31}],55:[function(require,module,exports){
+},{"es5-ext/array/from":30,"es5-ext/object/primitive-set":50}],74:[function(require,module,exports){
 'use strict';
 
 var primitiveSet = require('es5-ext/object/primitive-set')
@@ -89464,7 +92111,7 @@ var primitiveSet = require('es5-ext/object/primitive-set')
 module.exports = primitiveSet.apply(null,
 	Object.keys(eol).concat(Object.keys(inline)));
 
-},{"./ws-eol":53,"./ws-inline":54,"es5-ext/object/primitive-set":31}],56:[function(require,module,exports){
+},{"./ws-eol":72,"./ws-inline":73,"es5-ext/object/primitive-set":50}],75:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = (nBytes * 8) - mLen - 1
@@ -89550,7 +92197,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],57:[function(require,module,exports){
+},{}],76:[function(require,module,exports){
 (function (setImmediate,clearImmediate){
 var nextTick = require('process/browser.js').nextTick;
 var apply = Function.prototype.apply;
@@ -89629,7 +92276,7 @@ exports.clearImmediate = typeof clearImmediate === "function" ? clearImmediate :
   delete immediateIds[id];
 };
 }).call(this,require("timers").setImmediate,require("timers").clearImmediate)
-},{"process/browser.js":58,"timers":57}],58:[function(require,module,exports){
+},{"process/browser.js":77,"timers":76}],77:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -89815,7 +92462,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],59:[function(require,module,exports){
+},{}],78:[function(require,module,exports){
 "use strict";
 
 var isPrototype = require("../prototype/is");
@@ -89836,7 +92483,7 @@ module.exports = function (value) {
 	return !isPrototype(value);
 };
 
-},{"../prototype/is":62}],60:[function(require,module,exports){
+},{"../prototype/is":81}],79:[function(require,module,exports){
 "use strict";
 
 var isValue = require("../value/is");
@@ -89849,7 +92496,7 @@ module.exports = function (value) {
 	return hasOwnProperty.call(possibleTypes, typeof value);
 };
 
-},{"../value/is":63}],61:[function(require,module,exports){
+},{"../value/is":82}],80:[function(require,module,exports){
 "use strict";
 
 var isFunction = require("../function/is");
@@ -89862,7 +92509,7 @@ module.exports = function (value) {
 	return true;
 };
 
-},{"../function/is":59}],62:[function(require,module,exports){
+},{"../function/is":78}],81:[function(require,module,exports){
 "use strict";
 
 var isObject = require("../object/is");
@@ -89877,7 +92524,7 @@ module.exports = function (value) {
 	}
 };
 
-},{"../object/is":60}],63:[function(require,module,exports){
+},{"../object/is":79}],82:[function(require,module,exports){
 "use strict";
 
 // ES3 safe
@@ -89885,7 +92532,7 @@ var _undefined = void 0;
 
 module.exports = function (value) { return value !== _undefined && value !== null; };
 
-},{}],64:[function(require,module,exports){
+},{}],83:[function(require,module,exports){
 "use strict";
 
 AFRAME.registerComponent('flicker', {
@@ -89900,28 +92547,85 @@ AFRAME.registerComponent('flicker', {
   }
 });
 
-},{}],65:[function(require,module,exports){
+},{}],84:[function(require,module,exports){
+"use strict";
+
+AFRAME.registerComponent('radio-controls', {
+  init: function init() {
+    this.el.addEventListener('click', this.handleClick.bind(this));
+  },
+  handleClick: function handleClick(e) {
+    var buttonId = e.target.getAttribute('id');
+    var radio = document.querySelector('[radio]').components.radio;
+
+    switch (buttonId) {
+      case 'skipBack':
+        radio.previousSong();
+        break;
+
+      case 'skipForward':
+        radio.nextSong();
+        break;
+
+      case 'playPause':
+        radio.playPause();
+        break;
+    }
+  }
+});
+
+},{}],85:[function(require,module,exports){
 "use strict";
 
 AFRAME.registerComponent('radio', {
   init: function init() {
     this.el.addEventListener('sound-ended', this.nextSong.bind(this));
+    this.songIds = ['sample', 'silent_night', 'joy_world', 'carol_bell', 'christmas_tree', 'merry_christmas'];
+    this.currentSongId = 'silent_night';
+  },
+  playPause: function playPause() {
+    console.log(this.currentSongId);
+    var currentIdx = this.songIds.indexOf(this.currentSongId);
+
+    this._playSongByIndex(currentIdx);
   },
   nextSong: function nextSong(e) {
-    var songIds = ['sample', 'silent_night', 'joy_world', 'carol_bell', 'christmas_tree', 'merry_christmas'];
-    var currentSongId = e.detail.id;
-    var currentIdx = songIds.indexOf(currentSongId);
+    var currentIdx = this.songIds.indexOf(this.currentSongId);
     var nextIdx = currentIdx + 1;
-    if (nextIdx > songIds.length - 1) nextIdx = 0;
-    var nextSongId = songIds[nextIdx];
-    var soundId = 'sound__' + nextSongId;
+    if (nextIdx > this.songIds.length - 1) nextIdx = 0; // Cirlce to the beginning
+
+    if (!e) this._stopCurrentSong();
+
+    this._playSongByIndex(nextIdx);
+  },
+  previousSong: function previousSong() {
+    var currentIdx = this.songIds.indexOf(this.currentSongId);
+    var prevIdx = currentIdx - 1;
+    if (prevIdx < 0) prevIdx = this.songIds.length - 1; // Circle to the end
+
+    this._stopCurrentSong();
+
+    this._playSongByIndex(prevIdx);
+  },
+  _playSongByIndex: function _playSongByIndex(idx) {
+    this.currentSongId = this.songIds[idx];
+    var soundId = 'sound__' + this.currentSongId;
     var nextSong = document.querySelector('[' + soundId + ']');
-    console.log(nextSong.components);
-    nextSong.components[soundId].playSound();
+
+    if (nextSong.components[soundId].isPlaying) {
+      nextSong.components[soundId].pauseSound();
+    } else {
+      nextSong.components[soundId].playSound();
+    }
+  },
+  _stopCurrentSong: function _stopCurrentSong() {
+    var soundId = 'sound__' + this.currentSongId;
+    var currentSong = document.querySelector('[' + soundId + ']');
+    currentSong.components[soundId].stopSound();
   }
 });
 
-},{}],66:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 "use strict";
 
 AFRAME.registerComponent('tree-lights', {
@@ -89937,9 +92641,8 @@ AFRAME.registerComponent('tree-lights', {
       var thisColor = colors[idx];
       var newLight = document.createElement('a-entity');
       newLight.setAttribute('geometry', {
-        primitive: 'circle',
-        radius: 0.008,
-        height: 0.008
+        primitive: 'dodecahedron',
+        radius: 0.008
       });
       newLight.setAttribute('material', {
         shader: 'flat',
