@@ -3,7 +3,6 @@ AFRAME.registerComponent('radio', {
   init: function() {
     this.el.addEventListener('sound-ended', this.nextSong.bind(this));
     this.songIds = [
-                    'sample',
                     'silent_night',
                     'joy_world',
                     'carol_bell',
@@ -14,9 +13,12 @@ AFRAME.registerComponent('radio', {
   },
 
   playPause: function() {
-    console.log(this.currentSongId)
-    let currentIdx    = this.songIds.indexOf(this.currentSongId)
-    this._playSongByIndex(currentIdx)
+    let soundId = 'sound__'+ this.currentSongId
+    let soundSelector = '['+soundId+']'
+
+    let currentSong = document.querySelector(soundSelector)
+    let sound       = currentSong.components[soundId]
+    sound.isPlaying ? sound.pauseSound() : sound.playSound()
   },
 
   nextSong: function(e) {
@@ -43,11 +45,7 @@ AFRAME.registerComponent('radio', {
     let soundId        = 'sound__' + this.currentSongId;
     let nextSong       = document.querySelector('['+soundId+']')
 
-    if(nextSong.components[soundId].isPlaying){
-      nextSong.components[soundId].pauseSound()
-    } else {
-      nextSong.components[soundId].playSound()
-    }
+    nextSong.components[soundId].playSound()
   },
 
   _stopCurrentSong: function() {

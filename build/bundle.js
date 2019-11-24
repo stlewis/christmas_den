@@ -92580,14 +92580,15 @@ AFRAME.registerComponent('radio-controls', {
 AFRAME.registerComponent('radio', {
   init: function init() {
     this.el.addEventListener('sound-ended', this.nextSong.bind(this));
-    this.songIds = ['sample', 'silent_night', 'joy_world', 'carol_bell', 'christmas_tree', 'merry_christmas'];
+    this.songIds = ['silent_night', 'joy_world', 'carol_bell', 'christmas_tree', 'merry_christmas'];
     this.currentSongId = 'silent_night';
   },
   playPause: function playPause() {
-    console.log(this.currentSongId);
-    var currentIdx = this.songIds.indexOf(this.currentSongId);
-
-    this._playSongByIndex(currentIdx);
+    var soundId = 'sound__' + this.currentSongId;
+    var soundSelector = '[' + soundId + ']';
+    var currentSong = document.querySelector(soundSelector);
+    var sound = currentSong.components[soundId];
+    sound.isPlaying ? sound.pauseSound() : sound.playSound();
   },
   nextSong: function nextSong(e) {
     var currentIdx = this.songIds.indexOf(this.currentSongId);
@@ -92611,12 +92612,7 @@ AFRAME.registerComponent('radio', {
     this.currentSongId = this.songIds[idx];
     var soundId = 'sound__' + this.currentSongId;
     var nextSong = document.querySelector('[' + soundId + ']');
-
-    if (nextSong.components[soundId].isPlaying) {
-      nextSong.components[soundId].pauseSound();
-    } else {
-      nextSong.components[soundId].playSound();
-    }
+    nextSong.components[soundId].playSound();
   },
   _stopCurrentSong: function _stopCurrentSong() {
     var soundId = 'sound__' + this.currentSongId;
