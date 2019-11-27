@@ -21,7 +21,9 @@ require('./src/radio.js');
 
 require('./src/radio-controls.js');
 
-},{"./src/flicker.js":83,"./src/radio-controls.js":84,"./src/radio.js":85,"./src/tree-lights.js":86,"aframe":26,"aframe-csg-meshs":2,"aframe-gui":19,"aframe-layout-component":22,"aframe-particle-system-component":23,"aframe-template-component":25}],2:[function(require,module,exports){
+require('./src/card-animator.js');
+
+},{"./src/card-animator.js":83,"./src/flicker.js":84,"./src/radio-controls.js":85,"./src/radio.js":86,"./src/tree-lights.js":87,"aframe":26,"aframe-csg-meshs":2,"aframe-gui":19,"aframe-layout-component":22,"aframe-particle-system-component":23,"aframe-template-component":25}],2:[function(require,module,exports){
 const THREE = AFRAME.THREE;
 
 AFRAME.registerComponent('csg-meshs', {
@@ -92535,6 +92537,43 @@ module.exports = function (value) { return value !== _undefined && value !== nul
 },{}],83:[function(require,module,exports){
 "use strict";
 
+AFRAME.registerComponent('card-animator', {
+  init: function init() {
+    this.el.addEventListener('click', this.handleClick.bind(this));
+    this.open = false;
+  },
+  handleClick: function handleClick(e) {
+    console.log(e);
+
+    if (this.open) {
+      console.log("Only second");
+      this.open = false;
+      this.el.setAttribute('animation', {
+        property: 'object3D.rotation.y',
+        from: 170,
+        to: 60,
+        dur: 2000,
+        dir: 'reverse',
+        easing: 'easeInOutQuad'
+      });
+    } else {
+      console.log("initial");
+      this.open = true;
+      this.el.setAttribute('animation', {
+        property: 'object3D.rotation.y',
+        from: 60,
+        to: 170,
+        dur: 2000,
+        dir: 'reverse',
+        easing: 'easeInOutQuad'
+      });
+    }
+  }
+});
+
+},{}],84:[function(require,module,exports){
+"use strict";
+
 AFRAME.registerComponent('flicker', {
   init: function init() {
     this.flicker = AFRAME.utils.throttle(this.flicker, 50, this);
@@ -92547,7 +92586,7 @@ AFRAME.registerComponent('flicker', {
   }
 });
 
-},{}],84:[function(require,module,exports){
+},{}],85:[function(require,module,exports){
 "use strict";
 
 AFRAME.registerComponent('radio-controls', {
@@ -92574,7 +92613,7 @@ AFRAME.registerComponent('radio-controls', {
   }
 });
 
-},{}],85:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 "use strict";
 
 AFRAME.registerComponent('radio', {
@@ -92621,7 +92660,7 @@ AFRAME.registerComponent('radio', {
   }
 });
 
-},{}],86:[function(require,module,exports){
+},{}],87:[function(require,module,exports){
 "use strict";
 
 AFRAME.registerComponent('tree-lights', {
@@ -92637,7 +92676,7 @@ AFRAME.registerComponent('tree-lights', {
       var thisColor = colors[idx];
       var newLight = document.createElement('a-entity');
       newLight.setAttribute('geometry', {
-        primitive: 'dodecahedron',
+        primitive: 'circle',
         radius: 0.008
       });
       newLight.setAttribute('material', {

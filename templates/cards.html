@@ -1,0 +1,53 @@
+<a-entity id='first-card' position='0.3 1.6 -2.2' rotation="0 0 0">
+	<a-entity id='first-card-left' rotation='0 170 0' card-animator>
+    <a-entity id='first-inside-left' position='-0.0635 0 0'
+              gui-interactable
+              rotation='0 0 0'
+              geometry='primitive: plane; height: 0.2032; width: 0.127;'
+              material='color: #fff; side: front;'></a-entity>
+
+    <a-entity id='first-outside-left' position='-0.0635 0 0'
+              gui-interactable
+              rotation='0 180 0'
+              geometry='primitive: plane; height: 0.2032; width: 0.127;'
+              material='src: #card1front; side: front; npot: true;'></a-entity>
+  </a-entity>
+  <a-entity id='first-card-right' rotation='0 0 0' position='0.12701 0 0'>
+    <a-entity id='first-inside-right' position='-0.0635 0 0'
+              gui-interactable
+              geometry='primitive: plane; height: 0.2032; width: 0.127;'
+              material='src: #card1inner; side: front; npot: true;'></a-entity>
+
+    <a-entity id='first-outside-right' position='-0.0635 0 0'
+              gui-interactable
+              geometry='primitive: plane; height: 0.2032; width: 0.127;'
+              material='color: green; side: back;'></a-entity>
+  </a-entity>
+</a-entity>
+
+<a-entity id='second-card' position='0.5 1.6 -2.2' rotation="0 0 0">
+	<a-entity id='second-card-left' rotation='0 170 0' card-animator>
+    <a-entity id='second-inside-left' position='-0.0635 0 0'
+              gui-interactable
+              rotation='0 0 0'
+              geometry='primitive: plane; height: 0.2032; width: 0.127;'
+              material='color: #fff; side: front;'></a-entity>
+
+    <a-entity id='second-outside-left' position='-0.0635 0 0'
+              gui-interactable
+              rotation='0 180 0'
+              geometry='primitive: plane; height: 0.2032; width: 0.127;'
+              material='src: #card2front; side: front; npot: true;'></a-entity>
+  </a-entity>
+  <a-entity id='first-card-right' rotation='0 0 0' position='0.12701 0 0'>
+    <a-entity id='second-inside-right' position='-0.0635 0 0'
+              gui-interactable
+              geometry='primitive: plane; height: 0.2032; width: 0.127;'
+              material='src: #card2inner; side: front; npot: true;'></a-entity>
+
+    <a-entity id='second-outside-right' position='-0.0635 0 0'
+              gui-interactable
+              geometry='primitive: plane; height: 0.2032; width: 0.127;'
+              material='color: green; side: back;'></a-entity>
+  </a-entity>
+</a-entity>

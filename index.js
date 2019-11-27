@@ -8,4 +8,5 @@ require('./src/flicker.js')
 require('./src/tree-lights.js')
 require('./src/radio.js')
 require('./src/radio-controls.js')
+require('./src/card-animator.js')
 
