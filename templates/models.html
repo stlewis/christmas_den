@@ -21,6 +21,8 @@
 <!-- Chairs -->
 <a-entity shadow='receive: true; cast: true;' id='chair-left' gltf-model='#chair' scale='0.012 0.012 0.012' position='-0.6 0 -0.5' rotation='-90 0 -130'></a-entity>
 <a-entity shadow='receive: true; cast: true;' id='chair-right' gltf-model='#chair' scale='0.012 0.012 0.012' position='0.6 0 -0.5' rotation='-90 0 -70'></a-entity>
+<!-- Curtain -->
+<a-entity shadow='receive: true; cast: true;' id='curtain' gltf-model='#curtain' scale='0.0006 0.0006 0.0006' position='2.36 0.6 -1.14' rotation='0 -90 0'></a-entity>
 
 
 <!-- Fireplace Stuff -->
@@ -34,10 +36,19 @@
                                velocity-spread: .4 0 .4;
                                particle-count: 20;
                                max-age: 1; size: 1,2; size-spread: 2; opacity: 1,0; wiggle: 0 1 0; blending: additive"
-          position="0.144 0.196 -2.393"
+          position="0.144 0.196 -2.353"
           light="type: point; color: orange; intensity: 1; castShadow: true;"></a-entity>
 <a-entity id='logs' gltf-model='#logs-model' scale='0.0009 0.0009 0.0009' position='0.151 0.099 -2.693' ></a-entity>
 <a-sound src='./sounds/fire.wav' autoplay='true' loop='true' position='0.144 0.196 -2.393'></a-sound>
+<a-entity
+  id='the-hearth'
+  geometry='primitive: box; height: 0.001; depth: 0.5; width: 2;'
+  rotation='0 0 0'
+  position='0.112 0.073 -2.132'
+  material='src: #hearth-texture; repeat: 2 2; roughness: 1'
+  ></a-entity>
+
+
 <!-- End Fireplace Stuff -->
 
 <!-- The Tree  -->

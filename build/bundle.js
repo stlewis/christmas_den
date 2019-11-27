@@ -92543,10 +92543,7 @@ AFRAME.registerComponent('card-animator', {
     this.open = false;
   },
   handleClick: function handleClick(e) {
-    console.log(e);
-
     if (this.open) {
-      console.log("Only second");
       this.open = false;
       this.el.setAttribute('animation', {
         property: 'object3D.rotation.y',
@@ -92557,7 +92554,6 @@ AFRAME.registerComponent('card-animator', {
         easing: 'easeInOutQuad'
       });
     } else {
-      console.log("initial");
       this.open = true;
       this.el.setAttribute('animation', {
         property: 'object3D.rotation.y',
@@ -92681,7 +92677,8 @@ AFRAME.registerComponent('tree-lights', {
       });
       newLight.setAttribute('material', {
         shader: 'flat',
-        color: thisColor
+        color: thisColor,
+        side: 'double'
       });
       newLight.setAttribute('rotation', {
         x: -90

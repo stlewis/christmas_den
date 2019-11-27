@@ -37,6 +37,8 @@
 
       <a-assets>
         <img id='carpet-texture' src='./textures/RedCarpet_S.jpg'>
+        <img id='baseboard-texture' src='./textures/baseboard.jpg'>
+        <img id='hearth-texture' src='./textures/hearth-texture.jpg'>
         <img id='carpet-normal' src='./textures/RedCarpet_N.jpg'>
         <img id='wall-texture' src='./textures/TexturesCom_Plaster_StuccoCombed_512_albedo.jpg'>
         <img id='wall-normal' src='./textures/TexturesCom_Plaster_StuccoCombed_512_normal.jpg'>
@@ -56,6 +58,8 @@
         <a-asset-item id='stocking' src='./models/stocking.glb'></a-asset-item>
         <a-asset-item id='radio' src='./models/radio.glb'></a-asset-item>
         <a-asset-item id='door' src='./models/door/door.gltf'></a-asset-item>
+        <a-asset-item id='curtain' src='./models/Curtains/curtain.gltf'></a-asset-item>
+        <a-asset-item id='painting' src='./models/painting.gltf'></a-asset-item>
 
         <a-mixin id='wall-mat' material='src: #wall-texture; normalMap: #wall-normal; normalScale: 0.02 0.02; repeat: 10 10; roughness: 1'></a-mixin>
       </a-assets>
@@ -71,15 +75,15 @@
               <a-entity
                 cursor
 						  raycaster="objects: [gui-interactable]"
-              geometry='primitive: circle; radius: 0.002;'
+              geometry='primitive: circle; radius: 0.0002;'
               material='color: red; shader: flat;'
-              position='0 0 -0.25'
+              position='0 0 -0.025'
               fuse="false"></a-entity>
 
             </a-entity>
       </a-entity>
 
-      <a-entity template='src: ./templates/models.html'></a-entity>
+      <a-entity id='themodels' template='src: ./templates/models.html'></a-entity>
       <a-entity template='src: ./templates/cards.html'></a-entity>
       <a-entity template='src: ./templates/walls.html'></a-entity>
       <a-entity template='src: ./templates/radio-controls.html'></a-entity>

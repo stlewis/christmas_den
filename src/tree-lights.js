@@ -13,7 +13,7 @@ AFRAME.registerComponent('tree-lights', {
       let newLight = document.createElement('a-entity');
 
       newLight.setAttribute('geometry', { primitive: 'circle', radius: 0.008 });
-      newLight.setAttribute('material', { shader: 'flat', color: thisColor });
+      newLight.setAttribute('material', { shader: 'flat', color: thisColor, side: 'double' });
       newLight.setAttribute('rotation', { x: -90 })
       newLight.setAttribute('animation',
         { property: 'components.material.material.color',
