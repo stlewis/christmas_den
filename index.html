@@ -67,7 +67,10 @@
       <a-entity id='the-snow' position="4.86 2.25 -3.230" particle-system="preset: snow"></a-entity>
 
       <a-entity id="rig" movement-controls="speed: 0.1; constrainToNavMesh: true;"
+
           position="0 0 0">
+            <a-entity laser-controls="hand: right" raycaster='objects: [gui-interactable]'></a-entity>
+            <a-entity laser-controls="hand: left" raycaster='objects: [gui-interactable]'></a-entity>
             <a-entity camera
               position="0 1.6 0"
               look-controls="pointerLockEnabled: true">
