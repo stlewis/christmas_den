@@ -15,10 +15,32 @@ AFRAME.registerComponent('radio', {
   playPause: function() {
     let soundId = 'sound__'+ this.currentSongId
     let soundSelector = '['+soundId+']'
+    let btn  = document.querySelector('#playPause')
+    let cont = btn.parentNode;
 
     let currentSong = document.querySelector(soundSelector)
     let sound       = currentSong.components[soundId]
-    sound.isPlaying ? sound.pauseSound() : sound.playSound()
+
+    let newBtn = document.createElement('a-gui-icon-button')
+    newBtn.setAttribute('id', 'playPause')
+    newBtn.setAttribute('margin', '0.25 0.25 0.25 0.25')
+    newBtn.setAttribute('width', '0.75')
+    newBtn.setAttribute('height', '0.75')
+    newBtn.setAttribute('radio-controls', '')
+    newBtn.setAttribute('gui-interactable', '')
+    newBtn.setAttribute('gui-item', '')
+    newBtn.setAttribute('gui-icon-button', '')
+    newBtn.setAttribute('role', 'button')
+
+    if(sound.isPlaying) {
+      sound.pauseSound()
+      newBtn.setAttribute('icon', 'ios-play')
+    } else {
+      sound.playSound()
+      newBtn.setAttribute('icon', 'ios-pause')
+    }
+
+    cont.replaceChild(newBtn, btn)
   },
 
   nextSong: function(e) {

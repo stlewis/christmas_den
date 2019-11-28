@@ -23,7 +23,9 @@ require('./src/radio-controls.js');
 
 require('./src/card-animator.js');
 
-},{"./src/card-animator.js":83,"./src/flicker.js":84,"./src/radio-controls.js":85,"./src/radio.js":86,"./src/tree-lights.js":87,"aframe":26,"aframe-csg-meshs":2,"aframe-gui":19,"aframe-layout-component":22,"aframe-particle-system-component":23,"aframe-template-component":25}],2:[function(require,module,exports){
+require('./src/adapative-controls.js');
+
+},{"./src/adapative-controls.js":83,"./src/card-animator.js":84,"./src/flicker.js":85,"./src/radio-controls.js":86,"./src/radio.js":87,"./src/tree-lights.js":88,"aframe":26,"aframe-csg-meshs":2,"aframe-gui":19,"aframe-layout-component":22,"aframe-particle-system-component":23,"aframe-template-component":25}],2:[function(require,module,exports){
 const THREE = AFRAME.THREE;
 
 AFRAME.registerComponent('csg-meshs', {
@@ -92537,6 +92539,56 @@ module.exports = function (value) { return value !== _undefined && value !== nul
 },{}],83:[function(require,module,exports){
 "use strict";
 
+AFRAME.registerComponent('adaptive-controls', {
+  init: function init() {
+    if (AFRAME.utils.device.isMobileVR() || AFRAME.utils.device.checkHeadsetConnected()) {
+      return this.attachLaserControls();
+    } else {
+      return this.attachCursorControls();
+    }
+  },
+  attachLaserControls: function attachLaserControls() {
+    var laser = document.createElement('a-entity');
+    laser.setAttribute('raycaster', {
+      showLine: true,
+      objects: '[data-clickable]'
+    });
+    laser.setAttribute('line', {
+      color: 'red'
+    });
+    laser.setAttribute('laser-controls', {
+      hand: 'right'
+    });
+    document.querySelector('#rig').appendChild(laser);
+  },
+  attachCursorControls: function attachCursorControls() {
+    var cursor = document.createElement('a-entity');
+    cursor.setAttribute('geometry', {
+      primitive: 'circle',
+      radius: 0.0002
+    });
+    cursor.setAttribute('material', {
+      color: 'red',
+      shader: 'flat'
+    });
+    cursor.setAttribute('position', {
+      x: 0,
+      y: 0,
+      z: -0.025
+    });
+    cursor.setAttribute('cursor', {
+      fuse: false
+    });
+    cursor.setAttribute('raycaster', {
+      objects: '[gui-interactable]'
+    });
+    document.querySelector('[camera]').appendChild(cursor);
+  }
+});
+
+},{}],84:[function(require,module,exports){
+"use strict";
+
 AFRAME.registerComponent('card-animator', {
   init: function init() {
     this.el.addEventListener('click', this.handleClick.bind(this));
@@ -92567,7 +92619,7 @@ AFRAME.registerComponent('card-animator', {
   }
 });
 
-},{}],84:[function(require,module,exports){
+},{}],85:[function(require,module,exports){
 "use strict";
 
 AFRAME.registerComponent('flicker', {
@@ -92582,7 +92634,7 @@ AFRAME.registerComponent('flicker', {
   }
 });
 
-},{}],85:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 "use strict";
 
 AFRAME.registerComponent('radio-controls', {
@@ -92609,7 +92661,7 @@ AFRAME.registerComponent('radio-controls', {
   }
 });
 
-},{}],86:[function(require,module,exports){
+},{}],87:[function(require,module,exports){
 "use strict";
 
 AFRAME.registerComponent('radio', {
@@ -92621,9 +92673,30 @@ AFRAME.registerComponent('radio', {
   playPause: function playPause() {
     var soundId = 'sound__' + this.currentSongId;
     var soundSelector = '[' + soundId + ']';
+    var btn = document.querySelector('#playPause');
+    var cont = btn.parentNode;
     var currentSong = document.querySelector(soundSelector);
     var sound = currentSong.components[soundId];
-    sound.isPlaying ? sound.pauseSound() : sound.playSound();
+    var newBtn = document.createElement('a-gui-icon-button');
+    newBtn.setAttribute('id', 'playPause');
+    newBtn.setAttribute('margin', '0.25 0.25 0.25 0.25');
+    newBtn.setAttribute('width', '0.75');
+    newBtn.setAttribute('height', '0.75');
+    newBtn.setAttribute('radio-controls', '');
+    newBtn.setAttribute('gui-interactable', '');
+    newBtn.setAttribute('gui-item', '');
+    newBtn.setAttribute('gui-icon-button', '');
+    newBtn.setAttribute('role', 'button');
+
+    if (sound.isPlaying) {
+      sound.pauseSound();
+      newBtn.setAttribute('icon', 'ios-play');
+    } else {
+      sound.playSound();
+      newBtn.setAttribute('icon', 'ios-pause');
+    }
+
+    cont.replaceChild(newBtn, btn);
   },
   nextSong: function nextSong(e) {
     var currentIdx = this.songIds.indexOf(this.currentSongId);
@@ -92656,7 +92729,7 @@ AFRAME.registerComponent('radio', {
   }
 });
 
-},{}],87:[function(require,module,exports){
+},{}],88:[function(require,module,exports){
 "use strict";
 
 AFRAME.registerComponent('tree-lights', {

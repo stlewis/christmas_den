@@ -33,7 +33,7 @@
 
   </head>
   <body>
-    <a-scene renderer="physicallyCorrectLights: true; colorManagement: true;" light='defaultLightsEnabled: false;'>
+    <a-scene adaptive-controls renderer="physicallyCorrectLights: true; colorManagement: true;" light='defaultLightsEnabled: false;'>
 
       <a-assets>
         <img id='carpet-texture' src='./textures/RedCarpet_S.jpg'>
@@ -69,21 +69,9 @@
       <a-entity id="rig" movement-controls="speed: 0.1; constrainToNavMesh: true;"
 
           position="0 0 0">
-            <a-entity laser-controls="hand: right" raycaster='objects: [gui-interactable]'></a-entity>
-            <a-entity laser-controls="hand: left" raycaster='objects: [gui-interactable]'></a-entity>
             <a-entity camera
               position="0 1.6 0"
-              look-controls="pointerLockEnabled: true">
-
-              <a-entity
-                cursor
-						  raycaster="objects: [gui-interactable]"
-              geometry='primitive: circle; radius: 0.0002;'
-              material='color: red; shader: flat;'
-              position='0 0 -0.025'
-              fuse="false"></a-entity>
-
-            </a-entity>
+              look-controls="pointerLockEnabled: true"></a-entity>
       </a-entity>
 
       <a-entity id='themodels' template='src: ./templates/models.html'></a-entity>
