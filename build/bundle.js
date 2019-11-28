@@ -92548,18 +92548,30 @@ AFRAME.registerComponent('adaptive-controls', {
     }
   },
   attachLaserControls: function attachLaserControls() {
-    var laser = document.createElement('a-entity');
-    laser.setAttribute('raycaster', {
+    var laserR = document.createElement('a-entity');
+    var laserL = document.createElement('a-entity');
+    laserR.setAttribute('raycaster', {
       showLine: true,
-      objects: '[data-clickable]'
+      objects: '[gui-interactable]'
     });
-    laser.setAttribute('line', {
+    laserR.setAttribute('line', {
       color: 'red'
     });
-    laser.setAttribute('laser-controls', {
+    laserR.setAttribute('laser-controls', {
       hand: 'right'
     });
-    document.querySelector('#rig').appendChild(laser);
+    laserL.setAttribute('raycaster', {
+      showLine: true,
+      objects: '[gui-interactable]'
+    });
+    laserL.setAttribute('line', {
+      color: 'red'
+    });
+    laserL.setAttribute('laser-controls', {
+      hand: 'left'
+    });
+    document.querySelector('#rig').appendChild(laserR);
+    document.querySelector('#rig').appendChild(laserL);
   },
   attachCursorControls: function attachCursorControls() {
     var cursor = document.createElement('a-entity');

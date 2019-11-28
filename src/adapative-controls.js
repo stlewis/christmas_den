@@ -9,11 +9,18 @@ AFRAME.registerComponent('adaptive-controls', {
   },
 
   attachLaserControls: function() {
-    const laser = document.createElement('a-entity');
-    laser.setAttribute('raycaster', { showLine: true, objects: '[data-clickable]' })
-    laser.setAttribute('line', { color: 'red' });
-    laser.setAttribute('laser-controls', { hand: 'right'});
-    document.querySelector('#rig').appendChild(laser)
+    const laserR = document.createElement('a-entity');
+    const laserL = document.createElement('a-entity');
+    laserR.setAttribute('raycaster', { showLine: true, objects: '[gui-interactable]' })
+    laserR.setAttribute('line', { color: 'red' });
+    laserR.setAttribute('laser-controls', { hand: 'right'});
+
+    laserL.setAttribute('raycaster', { showLine: true, objects: '[gui-interactable]' })
+    laserL.setAttribute('line', { color: 'red' });
+    laserL.setAttribute('laser-controls', { hand: 'left'});
+
+    document.querySelector('#rig').appendChild(laserR)
+    document.querySelector('#rig').appendChild(laserL)
   },
 
   attachCursorControls: function() {
