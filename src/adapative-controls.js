@@ -1,7 +1,7 @@
 AFRAME.registerComponent('adaptive-controls', {
 
   init: function(){
-    if (AFRAME.utils.device.checkHeadsetConnected()) {
+    if (AFRAME.utils.device.isMobileVR()) {
       return this.attachLaserControls();
     } else {
       return this.attachCursorControls();

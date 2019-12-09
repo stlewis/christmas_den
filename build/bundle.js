@@ -92541,7 +92541,7 @@ module.exports = function (value) { return value !== _undefined && value !== nul
 
 AFRAME.registerComponent('adaptive-controls', {
   init: function init() {
-    if (AFRAME.utils.device.isMobileVR() || AFRAME.utils.device.checkHeadsetConnected()) {
+    if (AFRAME.utils.device.isMobileVR()) {
       return this.attachLaserControls();
     } else {
       return this.attachCursorControls();
