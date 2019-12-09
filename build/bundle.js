@@ -92678,9 +92678,16 @@ AFRAME.registerComponent('radio-controls', {
 
 AFRAME.registerComponent('radio', {
   init: function init() {
+    var _this = this;
+
     this.el.addEventListener('sound-ended', this.nextSong.bind(this));
     this.songIds = ['silent_night', 'joy_world', 'carol_bell', 'christmas_tree', 'merry_christmas'];
     this.currentSongId = 'silent_night';
+    var songEntityIds = ['#silent-night', '#joy-to-the-world', '#carol-of-the-bells', '#o-christmas-tree', '#wish-you-merry-christmas'];
+    songEntityIds.forEach(function (id) {
+      var entityEl = document.querySelector(id);
+      entityEl.addEventListener('sound-ended', _this.nextSong.bind(_this));
+    });
   },
   playPause: function playPause() {
     var soundId = 'sound__' + this.currentSongId;
