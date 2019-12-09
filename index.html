@@ -12,8 +12,11 @@
     <style type="text/css">
         @font-face{
           font-family:"Ionicons";
-          src:url("/fonts/ionicons.eot?v=2.0.1");
-          src:url("/fonts/ionicons.eot?v=2.0.1#iefix") format("embedded-opentype"),url("/fonts/ionicons.ttf?v=2.0.1") format("truetype"),url("/fonts/ionicons.woff?v=2.0.1") format("woff"),url("/fonts/ionicons.svg?v=2.0.1#Ionicons") format("svg");
+          src:url("./fonts/ionicons.eot?v=2.0.1");
+          src:url("./fonts/ionicons.eot?v=2.0.1#iefix") format("embedded-opentype"),
+              url("./fonts/ionicons.ttf?v=2.0.1") format("truetype"),
+              url("./fonts/ionicons.woff?v=2.0.1") format("woff"),
+              url("./fonts/ionicons.svg?v=2.0.1#Ionicons") format("svg");
           font-weight:normal;
           font-style:normal
         }
@@ -44,11 +47,11 @@
         <img id='wall-texture' src='./textures/TexturesCom_Plaster_StuccoCombed_512_albedo.jpg'>
         <img id='wall-normal' src='./textures/TexturesCom_Plaster_StuccoCombed_512_normal.jpg'>
         <img id="sky" src="night_sky.jpg">
-        <img id="card1front" src='/textures/CardFront1.png'>
-        <img id="card1inner" src='/textures/CardInner1.png'>
+        <img id="card1front" src='/textures/CardFront1.jpg'>
+        <img id="card1inner" src='/textures/CardInner1.jpg'>
 
-        <img id="card2front" src='/textures/CardFront2.png'>
-        <img id="card2inner" src='/textures/CardInner2.png'>
+        <img id="card2front" src='/textures/CardFront2.jpg'>
+        <img id="card2inner" src='/textures/CardInner2.jpg'>
         <audio id='sample-song' src='./sounds/example.mp3'>
 
         <a-asset-item id='fireplace' src='./models/fireplace/fireplace.gltf'></a-asset-item>
@@ -77,7 +80,7 @@
 
       <a-entity id='themodels' template='src: ./templates/models.html'></a-entity>
       <a-entity template='src: ./templates/cards.html'></a-entity>
-      <a-entity template='src: ./templates/walls.html'></a-entity>
+      <a-entity id='walls' template='src: ./templates/walls.html'></a-entity>
       <a-entity template='src: ./templates/radio-controls.html'></a-entity>
       <a-entity position='-0.018 0.0 0.041' template='src: ./templates/tree-lights.html'></a-entity>
 
