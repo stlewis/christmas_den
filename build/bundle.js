@@ -94559,6 +94559,11 @@ AFRAME.registerComponent('radio', {
       songEntity.addEventListener('sound-ended', _this.nextSong.bind(_this));
     });
     this.currentSongId = 'silent_night';
+    var songEntityIds = ['#silent-night', '#joy-to-the-world', '#carol-of-the-bells', '#o-christmas-tree', '#wish-you-merry-christmas'];
+    songEntityIds.forEach(function (id) {
+      var entityEl = document.querySelector(id);
+      entityEl.addEventListener('sound-ended', _this.nextSong.bind(_this));
+    });
   },
   playPause: function playPause() {
     var soundId = 'sound__' + this.currentSongId;

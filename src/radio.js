@@ -18,6 +18,19 @@ AFRAME.registerComponent('radio', {
 
 
     this.currentSongId = 'silent_night'
+
+    const songEntityIds = [
+      '#silent-night',
+      '#joy-to-the-world',
+      '#carol-of-the-bells',
+      '#o-christmas-tree',
+      '#wish-you-merry-christmas'
+    ]
+
+    songEntityIds.forEach((id) => {
+      let entityEl = document.querySelector(id)
+      entityEl.addEventListener('sound-ended', this.nextSong.bind(this));
+    })
   },
 
   playPause: function() {
