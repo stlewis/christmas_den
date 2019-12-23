@@ -1,13 +1,21 @@
 AFRAME.registerComponent('radio', {
 
   init: function() {
-    this.el.addEventListener('sound-ended', this.nextSong.bind(this));
+    this.el.sceneEl.addEventListener('sound-ended', this.nextSong.bind(this));
     this.songIds = [
                     'silent_night',
                     'joy_world',
                     'carol_bell',
                     'christmas_tree',
                     'merry_christmas' ]
+
+    const song_entities_ids = ['#silent-night', '#joy-to-the-world', '#carol-of-the-bells', '#o-christmas-tree', '#wish-you-merry-christmas']
+
+    song_entities_ids.forEach((id) => {
+      let songEntity = document.querySelector(id)
+      songEntity.addEventListener('sound-ended', this.nextSong.bind(this));
+    })
+
 
     this.currentSongId = 'silent_night'
   },
@@ -47,6 +55,8 @@ AFRAME.registerComponent('radio', {
 
     let currentIdx    = this.songIds.indexOf(this.currentSongId)
     let nextIdx       = currentIdx + 1;
+
+    console.log("We been trigged.", currentIdx, nextIdx)
 
     if(nextIdx > this.songIds.length - 1) nextIdx = 0; // Cirlce to the beginning
     if(!e) this._stopCurrentSong()
